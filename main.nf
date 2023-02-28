@@ -1,12 +1,10 @@
 #!/usr/bin/env nextflow
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    nf-core/phylophoenix
+    cdcgov/phylophoenix
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/nf-core/phylophoenix
-
-    Website: https://nf-co.re/phylophoenix
-    Slack  : https://nfcore.slack.com/channels/phylophoenix
+    Github : https://github.com/cdcgov/phylophoenix
+    Slack  : https://staph-b-dev.slack.com/channels/phoenix-h-dev
 ----------------------------------------------------------------------------------------
 */
 
@@ -39,7 +37,7 @@ include { PHYLOPHOENIX } from './workflows/phylophoenix'
 //
 // WORKFLOW: Run main nf-core/phylophoenix analysis pipeline
 //
-workflow NFCORE_PHYLOPHOENIX {
+workflow PHYLOPHOENIX_WF {
     PHYLOPHOENIX ()
 }
 
@@ -51,10 +49,9 @@ workflow NFCORE_PHYLOPHOENIX {
 
 //
 // WORKFLOW: Execute a single named workflow for the pipeline
-// See: https://github.com/nf-core/rnaseq/issues/619
 //
 workflow {
-    NFCORE_PHYLOPHOENIX ()
+    PHYLOPHOENIX_WF ()
 }
 
 /*

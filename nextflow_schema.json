@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema",
-    "$id": "https://raw.githubusercontent.com/nf-core/phylophoenix/master/nextflow_schema.json",
-    "title": "nf-core/phylophoenix pipeline parameters",
+    "$id": "https://raw.githubusercontent.com/dhqp/phylophoenix/main/nextflow_schema.json",
+    "title": "cdcgov/phylophoenix pipeline parameters",
     "description": "Pipeline for relatedness determination using PHoeNIx output.",
     "type": "object",
     "definitions": {
@@ -10,7 +10,7 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": ["input", "outdir"],
+            "required": [],
             "properties": {
                 "input": {
                     "type": "string",
@@ -42,41 +42,29 @@
                 }
             }
         },
-        "reference_genome_options": {
-            "title": "Reference genome options",
-            "type": "object",
-            "fa_icon": "fas fa-dna",
-            "description": "Reference genome related files and options required for the workflow.",
+        "snvphyl_options":{
+            "title": "Options for SNVPhyl Subworkflow",
             "properties": {
-                "genome": {
+                "reference_genome": {
                     "type": "string",
-                    "description": "Name of iGenomes reference.",
-                    "fa_icon": "fas fa-book",
-                    "help_text": "If using a reference genome configured in the pipeline using iGenomes, use this parameter to give the ID for the reference. This is then used to build the full paths for all required reference genome files e.g. `--genome GRCh38`. \n\nSee the [nf-core website docs](https://nf-co.re/usage/reference_genomes) for more details."
+                    "description": "Reference Genome.",
+                    "default": 16,
+                    "hidden": false,
+                    "help_text": "Reference Genomes. Should be an integer e.g. `--max_cpus 1`"
                 },
-                "fasta": {
-                    "type": "string",
-                    "format": "file-path",
-                    "mimetype": "text/plain",
-                    "pattern": "^\\S+\\.fn?a(sta)?(\\.gz)?$",
-                    "description": "Path to FASTA genome file.",
-                    "help_text": "This parameter is *mandatory* if `--genome` is not specified. If you don't have a BWA index available this will be generated for you automatically. Combine with `--save_reference` to save BWA index for future runs.",
-                    "fa_icon": "far fa-file-code"
+                "window_size": {
+                    "type": "integer",
+                    "description": "Window size for identifying high-density SNV regions.",
+                    "default": 11,
+                    "hidden": false,
+                    "help_text": "Window size for identifying high-density SNV regions. Should be an integer e.g. `--window_size 11`"
                 },
-                "igenomes_base": {
-                    "type": "string",
-                    "format": "directory-path",
-                    "description": "Directory / URL base for iGenomes references.",
-                    "default": "s3://ngi-igenomes/igenomes",
-                    "fa_icon": "fas fa-cloud-download-alt",
-                    "hidden": true
-                },
-                "igenomes_ignore": {
-                    "type": "boolean",
-                    "description": "Do not load the iGenomes reference config.",
-                    "fa_icon": "fas fa-ban",
-                    "hidden": true,
-                    "help_text": "Do not load `igenomes.config` when running the pipeline. You may choose this option if you observe clashes between custom parameters and those supplied in `igenomes.config`."
+                "density_threshold": {
+                    "type": "integer",
+                    "description": "SNV threshold for identifying high-density SNV regions.",
+                    "default": 2,
+                    "hidden": false,
+                    "help_text": "SNV threshold for identifying high-density SNV regions. Should be an integer e.g. `--density_threshold 2`"
                 }
             }
         },
@@ -272,7 +260,7 @@
             "$ref": "#/definitions/input_output_options"
         },
         {
-            "$ref": "#/definitions/reference_genome_options"
+            "$ref": "#/definitions/snvphyl_options"
         },
         {
             "$ref": "#/definitions/institutional_config_options"

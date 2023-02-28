@@ -13,10 +13,10 @@ class WorkflowPhylophoenix {
         genomeExistsError(params, log)
 
 
-        if (!params.fasta) {
+        /*if (!params.fasta) {
             log.error "Genome fasta file not specified with e.g. '--fasta genome.fa' or via a detectable config file."
             System.exit(1)
-        }
+        }*/
     }
 
     //
@@ -61,7 +61,8 @@ class WorkflowPhylophoenix {
         def description_html = engine.createTemplate(methods_text).make(meta)
 
         return description_html
-    }//
+    }
+    //
     // Exit pipeline if incorrect --genome key provided
     //
     private static void genomeExistsError(params, log) {
