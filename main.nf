@@ -12,14 +12,6 @@ nextflow.enable.dsl = 2
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    GENOME PARAMETER VALUES
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-
-params.fasta = WorkflowMain.getGenomeAttribute(params, 'fasta')
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     VALIDATE & PRINT PARAMETER SUMMARY
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
@@ -38,7 +30,31 @@ include { PHYLOPHOENIX } from './workflows/phylophoenix'
 // WORKFLOW: Run main nf-core/phylophoenix analysis pipeline
 //
 workflow PHYLOPHOENIX_WF {
-    PHYLOPHOENIX ()
+    // Check input path parameters to see if they exist
+    if (params.input != null ) {  // if a samplesheet is passed
+        // allow input to be relative, turn into string and strip off the everything after the last backslash to have remainder of as the full path to the samplesheet. 
+        //input_samplesheet_path = Channel.fromPath(params.input, relative: true).map{ [it.toString().replaceAll(/([^\/]+$)/, "").replaceAll(/\/$/, "") ] }
+        input_samplesheet_path = Channel.fromPath(params.input, relative: true)
+        if (params.input_dir != null ) { //if samplesheet is passed and an input directory exit
+            exit 1, 'You need EITHER an input samplesheet or a directory! Just pick one.' 
+        } else { // if only samplesheet is passed check to make sure input is an actual file
+            input_dir = []
+            def checkPathParamList = [ params.input ]
+            for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
+        }
+    } else { // if no samplesheet is passed
+        if (params.input_dir != null ) { // if no samplesheet is passed, but an input directory is given
+            input_samplesheet_path = []
+            def checkPathParamList = [ params.input_dir ]
+            for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
+            input_dir = params.input_dir
+        } else { // if no samplesheet is passed and no input directory is given
+            exit 1, 'You need EITHER an input samplesheet or a directory!' 
+        }
+    }
+
+    main:
+        PHYLOPHOENIX ( input_samplesheet_path, input_dir )
 }
 
 /*

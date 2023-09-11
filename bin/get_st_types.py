@@ -43,7 +43,7 @@ def create_sample_sheets(st_dict, samplesheet):
                     for line in f:
                         if sample in line:
                             sample = line.split(',')[0]
-                            assembly = line.split(',')[1].strip() + "/Assembly/" + sample + ".filtered.scaffolds.fa.gz" + "\n"
+                            assembly = line.split(',')[1].strip() + "/assembly/" + sample + ".filtered.scaffolds.fa.gz" + "\n"
                             new_samplesheet.write(sample + "," + key + "," + assembly)
 
 def main():

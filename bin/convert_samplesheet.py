@@ -20,6 +20,10 @@ from Bio import SeqIO
 ##Usage: >python convert_samplesheet.py -s samplesheet.csv -c control_file.csv -o output
 ## Written by Jill Hagey (qpk9@cdc.gov)
 
+#set colors for warnings so they are seen
+CRED = '\033[91m'+'\nWarning: '
+CEND = '\033[0m'
+
 def parseArgs(args=None):
     parser = argparse.ArgumentParser(description='Script to generate a PhoeNix summary excel sheet.')
     parser.add_argument('-s', '--samplesheet', default=None, required=False, dest='samplesheet', help='PHoeNIx style samplesheet of sample,directory in csv format. Directory is expected to have PHoeNIx stype output.')
@@ -61,7 +65,11 @@ def directory_to_samplesheet(directory): # not tested.
     with open("updated_samplesheet.csv", "w") as samplesheet:
         samplesheet.write('sample,fastq_1,fastq_2,seq_type\n')
     dirs = os.listdir(directory)
-    skip_list = [ "Phoenix_Output_Report.tsv", "pipeline_info", "GRiPHin_Report.xlsx", "multiqc", "samplesheet_converted.csv", "GRiPHin_samplesheet.csv"]
+    # If there are any new files added to the top directory they will need to be added here or you will get an error
+    skip_list_a = glob.glob(directory + "/*_GRiPHin_Summary.*") # for if griphin is run on a folder that already has a report in it
+    skip_list_a = [ gene.split('/')[-1] for gene in skip_list_a ]  # just get the excel name not the full path
+    skip_list_b = ["BiosampleAttributes_Microbe.1.0.xlsx", "Sra_Microbe.1.0.xlsx", "Phoenix_Summary.tsv", "pipeline_info", "GRiPHin_Summary.xlsx", "GRiPHin_Summary.tsv", "multiqc", "samplesheet_converted.csv", "Directory_samplesheet.csv", "sra_samplesheet.csv"]
+    skip_list = skip_list_a + skip_list_b
     sample_count = len(dirs) # get total number of samples
     for sample in dirs:
         if sample not in skip_list:
@@ -76,7 +84,7 @@ def directory_to_samplesheet(directory): # not tested.
                     full_line = sample + "," + R1_line + "," + R2_line + "\n"
                 elif count == sample_count:
                     full_line = sample + "," + R1_line + "," + R2_line
-                new_samplesheet.write(full_line)
+                samplesheet.write(full_line)
                 count = count + 1
     return samplesheet
 
@@ -84,9 +92,9 @@ def main():
     args = parseArgs()
     # If a directory is given then create a samplesheet from it if not use the samplesheet passed
     if args.directory !=None:
-        samplesheet = directory_to_samplesheet(args.directory)
+        directory_to_samplesheet(args.directory)
     elif args.samplesheet !=None:
-        samplesheet = convert_samplesheet(args.samplesheet, args.seq_type)
+        convert_samplesheet(args.samplesheet, args.seq_type)
     else:
         sys.exit(CRED + "You MUST pass a directory of PHoeNIx output to create a samlesheet.\n" + CEND)
 

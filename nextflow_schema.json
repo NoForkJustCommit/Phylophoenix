@@ -28,6 +28,18 @@
                     "description": "The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.",
                     "fa_icon": "fas fa-folder-open"
                 },
+                "input_dir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "The input directory that is a PHoeNIx style structure. A samplesheet will be created from this to run.",
+                    "fa_icon": "fas fa-folder-open"
+                },
+                "by_st": {
+                    "type": "boolean",
+                    "default": "False",
+                    "description": "The input directory that is a PHoeNIx style structure. A samplesheet will be created from this to run.",
+                    "fa_icon": "fas fa-keyboard"
+                },
                 "email": {
                     "type": "string",
                     "description": "Email address for completion summary.",
@@ -47,10 +59,10 @@
             "properties": {
                 "reference_genome": {
                     "type": "string",
-                    "description": "Reference Genome.",
+                    "description": "Reference genome.",
                     "default": 16,
                     "hidden": false,
-                    "help_text": "Reference Genomes. Should be an integer e.g. `--max_cpus 1`"
+                    "help_text": "Reference genome you would like to use rather than getting a centriod."
                 },
                 "window_size": {
                     "type": "integer",

@@ -47,7 +47,7 @@ def create_sample_sheets(st_dict, samplesheet):
                     if sample in line:
                         with open("SNVPhyl_" + seq_type +"_samplesheet.csv", "a") as st_snv_samplesheet: # this create a file with headers
                             st_snv_samplesheet.write("\n" + line.strip('\n'))
-                        assembly = line.split(',')[1].strip() + "/Assembly/" + sample + ".filtered.scaffolds.fa.gz"
+                        assembly = line.split(',')[1].strip() + "/assembly/" + sample + ".filtered.scaffolds.fa.gz"
                         list_of_samples_by_st.append(assembly)
                         complete_list.append(assembly)
         with open(seq_type +"_samplesheet.csv", 'w') as new_samplesheet: # create a new sample sheet for each ST

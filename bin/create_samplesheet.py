@@ -22,19 +22,23 @@ CEND = '\033[0m'
 def create_samplesheet(directory):
     """Function will create a samplesheet from samples in a directory if -d argument passed."""
     directory = os.path.abspath(directory) # make sure we have an absolute path to start with
-    with open("GRiPHin_samplesheet_created.csv", "w") as samplesheet:
+    with open("Directory_samplesheet.csv", "w") as samplesheet:
         samplesheet.write('sample,directory\n')
         dirs = os.listdir(directory)
-        skip_list = [ "Phoenix_Output_Report.tsv", "pipeline_info", "GRiPHin_Report.xlsx", "multiqc", "samplesheet_converted.csv", "GRiPHin_samplesheet.csv"]
+        # If there are any new files added to the top directory they will need to be added here or you will get an error
+        skip_list_a = glob.glob(directory + "/*_GRiPHin_Summary.*") # for if griphin is run on a folder that already has a report in it
+        skip_list_a = [ gene.split('/')[-1] for gene in skip_list_a ]  # just get the excel name not the full path
+        skip_list_b = ["BiosampleAttributes_Microbe.1.0.xlsx", "Sra_Microbe.1.0.xlsx", "Phoenix_Summary.tsv", "pipeline_info", "GRiPHin_Summary.xlsx", "GRiPHin_Summary.tsv", "multiqc", "samplesheet_converted.csv", "Directory_samplesheet.csv", "sra_samplesheet.csv"]
+        skip_list = skip_list_a + skip_list_b
         for sample in dirs:
             if sample not in skip_list:
-                #with open("GRiPHin_samplesheet_created.csv", "a") as samplesheet:
+                #with open("Directory_samplesheet.csv", "a") as samplesheet:
                     if directory[-1] != "/": # if directory doesn't have trailing / add one
                         directory = directory + "/"
                     #print(sample + "," + directory + sample + '\n')
                     samplesheet.write(sample + "," + directory + sample + '\n')
                     #print(directory)
-    samplesheet = "GRiPHin_samplesheet_created.csv"
+    samplesheet = "Directory_samplesheet.csv"
     return samplesheet
 
 def main():

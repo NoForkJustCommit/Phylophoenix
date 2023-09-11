@@ -1,7 +1,4 @@
 /* Find repeats and create invaild_positions.bed */
-
-def VERSION = '1.8.2' // Version information not provided by in container
-
 process FIND_REPEATS {
     tag "${meta.seq_type}"
     label 'process_low'
@@ -15,12 +12,15 @@ process FIND_REPEATS {
     path("versions.yml"),             emit: versions
 
     script:
+    // get container info
+    def container = task.container.toString() - "staphb/snvphyl-tools:"
     """
     find-repeats.pl ${refgenome} --min-length 150 --min-pid 90 > invalid_positions.bed
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        snvphyl-tools: $VERSION
+        snvphyl-tools: ${container}
         perl: \$(perl --version | grep "This is perl" | sed 's/.*(\\(.*\\))/\\1/' | cut -d " " -f1)
+    END_VERSIONS
     """
 }

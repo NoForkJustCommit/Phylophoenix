@@ -1,48 +1,44 @@
 process GRIPHIN {
     label 'process_low'
-    container 'quay.io/jvhagey/phoenix:base_v1.1.0'
+    container 'quay.io/jvhagey/phoenix:base_v2.1.0'
 
     input:
-    path(sample_sheet) // -s
+    path(sample_sheet) // -s . This is an empty list when no samplesheet is passed
     path(db) // -a
     val(prefix) // -o
     path(control_list) // -c
-    val(complete_path)
+    val(coverage)
+    val(entry)
 
     output:
-    path("*.xlsx"),                  emit: griphin_report
-    path("GRiPHin_samplesheet.csv"), emit: griphin_samplesheet
-    path("versions.yml"),            emit: versions
+    path("*_Summary.xlsx"),            emit: griphin_report
+    path("*_Summary.tsv"),             emit: griphin_tsv_report
+    path("Directory_samplesheet.csv"), optional: true, emit: griphin_samplesheet
+    path("versions.yml"),              emit: versions
 
     script: // This script is bundled with the pipeline, in cdcgov/griphin/bin/
-    //def samplesheet = sample_sheet ? "--samplesheet ${sample_sheet}" : ""
-    def controls    = control_list ? "--control_list ${control_list}" : ""
-    //def input_dir   = input ? "--directory ${input}" : ""
-    def report_prefix     = prefix ? "--output ${prefix}" : ""
+    // Adding if/else for if running on ICA it is a requirement to state where the script is, however, this causes CLI users to not run the pipeline from any directory.
+    if (params.ica==false) {
+        ica = ""
+    } else if (params.ica==true) {
+        ica = "python ${workflow.launchDir}/bin/"
+    } else {
+        error "Please set params.ica to either \"true\" if running on ICA or \"false\" for all other methods."
+    }
+    def samplesheet   = sample_sheet ? "--samplesheet ${sample_sheet}" : ""
+    def controls      = control_list ? "--control_list ${control_list}" : ""
+    def report_prefix = prefix ? "--output ${prefix}" : ""
+    def phoenix       = entry ? "" : "--phoenix" // tells griphin in the run was a CDC (i.e. -entry CDC_PHOENIX) one or standard
+    // get container info
+    def container     = task.container.toString() - "quay.io/jvhagey/phoenix:"
     """
-    #create a samplesheet to be passed to GRiPHin.py, this helps to make sure the paths are full. 
-    if [ ! -f GRiPHin_samplesheet.csv ]
-    then
-        while IFS="" read -r line;
-        do
-            sample_name=\$(echo \$line | cut -d ',' -f 1)
-            echo
-            if [[ "\$sample_name" == "sample" ]]; then
-                echo "sample,directory" > GRiPHin_samplesheet.csv
-            else
-                #get the full path for the samples rather than the working directory
-                full_path=\$(readlink -f ${complete_path}/Phoenix_Output_Report.tsv)
-                full_dir=\$(echo \$full_path | sed 's/\\/Phoenix_Output_Report.tsv//')
-                echo \$sample_name,\$full_dir/\$sample_name >> GRiPHin_samplesheet.csv
-            fi
-        done < ${sample_sheet}
-    fi
 
-    GRiPHin.py --samplesheet GRiPHin_samplesheet.csv --ar_db ${db} ${controls} ${report_prefix}
+    ${ica}GRiPHin.py --ar_db ${db} --coverage ${coverage} ${samplesheet} ${controls} ${phoenix} ${report_prefix}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
+       python: \$(python --version | sed 's/Python //g')
+       phoenix_base_container: ${container}
     END_VERSIONS
     """
 }

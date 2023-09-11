@@ -1,7 +1,4 @@
 /* Making SNV matrix */
-
-def VERSION = '1.8.2' // Version information not provided by in container
-
 process MAKE_SNV {
     label 'process_low'
     container "staphb/snvphyl-tools:1.8.2"
@@ -14,12 +11,13 @@ process MAKE_SNV {
     path("versions.yml"),  emit: versions
 
     script:
+    def container = task.container.toString() - "staphb/snvphyl-tools:"
     """
     snv_matrix.pl ${snvAlignment_phy} -o snvMatrix.tsv
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        snvphyl-tools: $VERSION
+        snvphyl-tools: ${container}
         perl: \$(perl --version | grep "This is perl" | sed 's/.*(\\(.*\\))/\\1/' | cut -d " " -f1)
     END_VERSIONS
     """

@@ -8,7 +8,7 @@ workflow CREATE_META {
         snv_samplesheets // headers: id,directory
 
     main:
-        // flatten so some samplesheet is  to create [ meta.id, meta.st] then group by st type collect them all and pass again to create list for each ST type
+        // flatten so some samplesheet is to create [ meta.id, meta.st] then group by st type collect them all and pass again to create list for each ST type
         st_scaffolds = samplesheets.flatten() //flatten so one samplesheet goes through at a time
             .splitCsv( header:true, sep:',' ) // split incoming samplesheet one row at a time
             .map{ create_assembly_channel(it) } // creates create [ [ meta.id, meta.st], assembly_1, assembly_2 ] for reach sample

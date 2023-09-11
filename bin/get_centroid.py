@@ -54,7 +54,7 @@ def get_assembly_path(seq_type,samplesheet,low_mean_sample):
                 path_to_centroid_dir = line.split(",")[1].strip("\n")
                 if path_to_centroid_dir.endswith("/"):
                     path_to_centroid_dir.strip("/")
-                path_to_centroid = path_to_centroid_dir + "/Assembly/" + match[0] + ".filtered.scaffolds.fa.gz"
+                path_to_centroid = path_to_centroid_dir + "/assembly/" + match[0] + ".filtered.scaffolds.fa.gz"
     with open("path_to_" + seq_type + "_centroid.csv", "w") as output:
         output.write(path_to_centroid)
 

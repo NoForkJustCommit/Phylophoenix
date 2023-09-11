@@ -1,7 +1,4 @@
 /* Filter freebayes vcf */
-
-def VERSION = '1.8.2' // Version information not provided by in container
-
 process FILTER_FREEBAYES {
     tag "${meta.id}"
     label 'process_low'
@@ -16,12 +13,14 @@ process FILTER_FREEBAYES {
 
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
+    // get container info
+    def container = task.container.toString() - "staphb/snvphyl-tools:"
     """
     filterVcf.pl --noindels ${freebayes_vcf} -o ${prefix}_freebayes_filtered.vcf
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        snvphyl-tools: $VERSION
+        snvphyl-tools: ${container}
         perl: \$(perl --version | grep "This is perl" | sed 's/.*(\\(.*\\))/\\1/' | cut -d " " -f1)
     END_VERSIONS
     """

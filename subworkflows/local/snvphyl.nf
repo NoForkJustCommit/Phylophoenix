@@ -53,36 +53,43 @@ def add_st(input) {
     return files
 }
 
-def map_join(channel_a, channel_b, key){
-    channel_a
-        .map{ it -> [it[key], it] }
-        //.cross(channel_b.map{it -> [it[key], it]})
-        //.map { it[0][1] + it[1][1] }
+def join_index_by_st(reads_ch, reference_index_list){ 
+    // Use for cases where ch_1 = [ [meta.id, meta.seq_type] file(s)] and ch_2 = [ [meta.seq_type] file(s)]
+    seq_type_1 = reads_ch.get(0).seq_type // get the meta.seq_type for the reads
+    // now loop through reference list to find a match
+    for ( ref_indexes in reference_index_list ) {
+        // get reference_indexes seq_type
+        seq_type_2 = ref_indexes.get(0).seq_type // get the meta.seq_type for the reference indexes
+        if ( seq_type_2 == seq_type_1 ) {// if the seq_type match create a new channel
+            reads = reads_ch.get(1)
+            matched_ch = [ [reads_ch.get(0), reads], [ref_indexes.get(0), ref_indexes.get(1), ref_indexes.get(2), ref_indexes.get(3) ]]
+        } 
+    }
+    return matched_ch
 }
 
-def join_by_st(ch_1, ch_2){ 
+def join_ref_by_st(bams_ch, reference_index_list, ref_genome_list){ 
     // Use for cases where ch_1 = [ [meta.id, meta.seq_type] file(s)] and ch_2 = [ [meta.seq_type] file(s)]
-    id = ch_1.map{ meta, file -> meta.id}
-    new_1 = ch_1.map{ meta_old, file -> 
-        def meta = [:]
-        meta.seq_type = meta_old.seq_type
-        return tuple( meta, file)} // Need to do this to keep [ [meta.seq_type], file] format. This just drops meta.id from channel
-    new_1.view()
-    ch_2.view()
-    ch_3 = ch_1.map{ meta, file -> [ meta, file ]}.join(ch_2, by: [0,0])
-    ch_3.view()
-    ch_3.map{ meta_old, file -> 
-        def meta = [:]
-        meta.seq_type = meta_old.seq_type
-        meta.id = id
-        return tuple( meta, mash_dists)}
-    ch_3.view()
-    return ch_3
+    seq_type_1 = bams_ch.get(0).seq_type // get the meta.seq_type for the reads
+    // now loop through reference list to find a match
+    for ( ref_indexes in reference_index_list ) {
+        // get reference seq_type
+        seq_type_2 = ref_indexes.get(0).seq_type // get the meta.seq_type for the reference indexes
+        if ( seq_type_2 == seq_type_1 ) {// if the seq_type match create a new channel
+            for ( ref_genome in ref_genome_list ) {
+                seq_type_3 = ref_genome.get(0).seq_type // get the meta.seq_type for the reference genome
+                if (seq_type_2 == seq_type_3) {
+                    matched_ch = [ [bams_ch.get(0), bams_ch.get(1)], [ref_indexes.get(0), ref_indexes.get(1), ref_indexes.get(2), ref_indexes.get(3) ], [ref_genome.get(0), ref_genome.get(1)]]
+                }
+            }
+        } 
+    }
+    return matched_ch
 }
 
 workflow SNVPHYL {
     take:
-        samplesheet // GRIPHIN.out.griphin_samplesheet;l
+        samplesheet // GRIPHIN.out.griphin_samplesheet
         reference   // GET_REFERENCE_SEQ.out.reference
 
     main:
@@ -109,6 +116,7 @@ workflow SNVPHYL {
         INDEXING(
             reference
         )
+        ch_versions = ch_versions.mix(INDEXING.out.versions)
 
         //2. find repeats process takes 1 input channel as a argument
         FIND_REPEATS(
@@ -116,23 +124,15 @@ workflow SNVPHYL {
         )
         ch_versions = ch_versions.mix(FIND_REPEATS.out.versions)
 
+        //Doing some channel rearragement to be able to combine the correct reference indexes for the st with the reads of the same st
+        smalt_ch = INPUT_CHECK.out.reads.map{meta, reads -> [[meta, reads]] } // just reformating to use in function
+            .combine(INDEXING.out.ref_indexes.map{meta, fai, sma, smi -> [[meta, fai, sma, smi]] }.collect())// get all references to loop through
+            .map{ reads, ref_index -> join_index_by_st(reads, [ref_index]) } // use custom function to combine by seq_type
+
         //3. smalt map process takes 2 input channels as arguments
-        //INPUT_CHECK.out.reads.view()
-        index_ch = INDEXING.out.ref_indexes.map{ add_st(it) }
-        //index_ch.view()
-
-        smalt_ch = join_by_st(INPUT_CHECK.out.reads, INDEXING.out.ref_indexes)
-        //INDEXING.out.ref_indexes.view()
-        //smalt_ch = INPUT_CHECK.out.reads.join(INDEXING.out.ref_indexes, by: [0,0])
-        smalt_ch.view()
-        //map_join(INPUT_CHECK.out.reads, index_ch, key: "seq_type" )
-
-        // Function to get list of [ meta, [ scaffolds_1, scaffolds_2 ] ]
-        //INDEXING.out.ref_indexes.map{ add_st(it) }.view()
-        //INDEXING.out.ref_indexes.map{ seq_type, ref_fai, ref_sma, ref_smi -> [[seq_type], [ref_fai, ref_sma, ref_smi]]}.view()
-
         SMALT_MAP(
-            INPUT_CHECK.out.reads, smalt_ch
+            smalt_ch.map{meta_and_reads, meta_2_and_ref_indexes -> meta_and_reads },
+            smalt_ch.map{meta_and_reads, meta_2_and_ref_indexes -> meta_2_and_ref_indexes }
         )
         ch_versions = ch_versions.mix(SMALT_MAP.out.versions)
 
@@ -146,18 +146,24 @@ workflow SNVPHYL {
         GENERATE_LINE_1(
             SORT_INDEX_BAMS.out.sorted_bams.collect()
         )
-        //ch_versions = ch_versions.mix(GENERATE_LINE_1.out.versions)
+        ch_versions = ch_versions.mix(GENERATE_LINE_1.out.versions)
 
         VERIFYING_MAP_Q(
             SORT_INDEX_BAMS.out.sorted_bams.collect(), GENERATE_LINE_1.out.bam_lines_file.splitText()
         )
         ch_versions = ch_versions.mix(VERIFYING_MAP_Q.out.versions)
 
-        //6. freebays variant calling process takes 2 input channels as arguments
-        //SORT_INDEX_BAMS.out.sorted_bams_and_sampleID.view()
-        //reference.view()
+        //Doing some channel rearragement to be able to combine the correct reference and its indexes for the st with the bams from the same st
+        sorted_bams_with_ch = SORT_INDEX_BAMS.out.sorted_bams_and_sampleID.map{meta, bams -> [[meta, bams]] } // just reformating to use in function
+            .combine(INDEXING.out.ref_indexes.map{meta, fai, sma, smi -> [[meta, fai, sma, smi]] }.collect())// get all references to loop through
+            .combine(reference.map{meta, reference -> [[meta, reference]] }.collect())// get all references index files to loop through
+            .map{ bams, ref_indexes, reference -> join_ref_by_st(bams, [ref_indexes], [reference]) } // use custom function to combine by seq_type
+
+        //6. freebays variant calling process takes 3 input channels as arguments. You can do without indexes, but then freebayes makes them so including
         FREEBAYES(
-            SORT_INDEX_BAMS.out.sorted_bams_and_sampleID, reference
+            sorted_bams_with_ch.map{meta_and_bams, meta_2_and_ref_indexes, meta_3_and_reference -> meta_and_bams },
+            sorted_bams_with_ch.map{meta_and_bams, meta_2_and_ref_indexes, meta_3_and_reference -> meta_2_and_ref_indexes },
+            sorted_bams_with_ch.map{meta_and_bams, meta_2_and_ref_indexes, meta_3_and_reference -> meta_3_and_reference }
         )
         ch_versions = ch_versions.mix(FREEBAYES.out.versions)
 
@@ -179,9 +185,11 @@ workflow SNVPHYL {
         )
         ch_versions = ch_versions.mix(FREEBAYES_VCF_TO_BCF.out.versions)
 
-        //9. mplileup process takes 1 input channel as argument
+        //9. mplileup process takes 1 input channel as argument. You can do without indexes, but then mpileup makes them so including for speed
         MPILEUP(
-            SORT_INDEX_BAMS.out.sorted_bams_and_sampleID, reference
+            sorted_bams_with_ch.map{meta_and_bams, meta_2_and_ref_indexes, meta_3_and_reference -> meta_and_bams },
+            sorted_bams_with_ch.map{meta_and_bams, meta_2_and_ref_indexes, meta_3_and_reference -> meta_2_and_ref_indexes },
+            sorted_bams_with_ch.map{meta_and_bams, meta_2_and_ref_indexes, meta_3_and_reference -> meta_3_and_reference }
         )
         ch_versions = ch_versions.mix(MPILEUP.out.versions)
 

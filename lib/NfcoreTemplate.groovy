@@ -323,10 +323,10 @@ class NfcoreTemplate {
         String.format(
             """\n
             ${dashedLine(monochrome_logs)}
-            ${colors.bired}  ___                      __     ___                           _____          ${colors.reset}
-            ${colors.bired} |   \\  |   | \\  /  |     /  \\  |   \\ |   |   __   ___  |\\  |   |    \\  /  ${colors.reset}
-            ${colors.bired} |___/  |---|  \\/   |     |   |  |___/  |___|  /  \\ |___  | \\ |   |     \\/  ${colors.reset}
-            ${colors.bired} |      |   |  /     |___ \\__/   |      |   |  \\__/ |___  |  \\| __|__  /  \\ ${colors.reset}
+            ${colors.bired}  ___                     __    ___                            _____          ${colors.reset}
+            ${colors.bired} |   \\  |   | \\  /  |    /  \\   |   \\  |   |   __   ___  |\\  |   |    \\  /  ${colors.reset}
+            ${colors.bired} |___/  |---|  \\/   |   |    |  |___/  |___|  /  \\ |___  | \\ |   |     \\/  ${colors.reset}
+            ${colors.bired} |      |   |  /    |___ \\__/   |      |   |  \\__/ |___  |  \\| __|__  /  \\ ${colors.reset}
             ${colors.bired}                                                        ${colors.reset}
             ${colors.purple}  ${workflow.manifest.name} ${workflow_version}${colors.reset}
             ${dashedLine(monochrome_logs)}

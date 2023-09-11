@@ -9,35 +9,6 @@ def summary_params = NfcoreSchema.paramsSummaryMap(workflow, params)
 // Validate input parameters
 WorkflowPhylophoenix.initialise(params, log)
 
-// TODO nf-core: Add all file path parameters for the pipeline to the list below
-// Check input path parameters to see if they exist
-//def checkPathParamList = [ params.input, params.multiqc_config ]
-//for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
-
-// Check mandatory parameters
-//if (params.input) { ch_input = file(params.input) } else { exit 1, 'Input samplesheet not specified!' }
-
-// Check input path parameters to see if they exist
-if (params.input != null ) {  // if a samplesheet is passed
-    // allow input to be relative, turn into string and strip off the everything after the last backslash to have remainder of as the full path to the samplesheet. 
-    //input_samplesheet_path = Channel.fromPath(params.input, relative: true).map{ [it.toString().replaceAll(/([^\/]+$)/, "").replaceAll(/\/$/, "") ] }
-    input_samplesheet_path = Channel.fromPath(params.input, relative: true)
-    if (params.input_dir != null ) { //if samplesheet is passed and an input directory exit
-        exit 1, 'You need EITHER an input samplesheet or a directory! Just pick one.' 
-    } else { // if only samplesheet is passed check to make sure input is an actual file
-        def checkPathParamList = [ params.input ]
-        for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
-    }
-} else {
-    if (params.input_dir != null ) { // if no samplesheet is passed, but an input directory is given
-        input_samplesheet_path = []
-        def checkPathParamList = [ params.input_dir ]
-        for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
-    } else { // if no samplesheet is passed and no input directory is given
-        exit 1, 'You need EITHER an input samplesheet or a directory!' 
-    }
-}
-
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     CONFIG FILES
@@ -96,24 +67,27 @@ include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoft
 */
 
 // Info required for completion email and summary
-def multiqc_report = []
+//def multiqc_report = []
 
 workflow PHYLOPHOENIX {
+    take:
+        input_samplesheet_path
+        input_dir
 
-        main:
+    main:
         ch_versions = Channel.empty()
         // Allow outdir to be relative
         //outdir_path = Channel.fromPath(params.outdir, relative: true, type: 'dir')
 
         // Create report
         GRIPHIN_WORKFLOW (
-            input_samplesheet_path, params.input_dir
+            input_samplesheet_path, input_dir
         )
         ch_versions = ch_versions.mix(GRIPHIN_WORKFLOW.out.versions)
 
-        /*/ Creates samplesheets with sampleid,seq_type,path_to_assembly
+        // Creates samplesheets with sampleid,seq_type,path_to_assembly
         GET_COMPARISONS (
-            GRIPHIN_WORKFLOW.out.griphin_samplesheet
+            GRIPHIN_WORKFLOW.out.directory_samplesheet
         )
         ch_versions = ch_versions.mix(GET_COMPARISONS.out.versions)
 
@@ -130,10 +104,13 @@ workflow PHYLOPHOENIX {
 
         // Creating channel [ ST, [distance_1, distance_2] ]
         dist_ch = MASH_DIST.out.dist.map{ meta, dist -> [ dist ] }.collect() // drop meta and collect all distance files
-        centroid_ch = dist_ch.map{ dist -> [ "All_STs", dist ]} // add back "All_STs" as the meta value
-        .combine(GRIPHIN_WORKFLOW.out.griphin_samplesheet) // Add samplesheet to all mash distance channels
+        centroid_ch = dist_ch.map{ mash_dist -> 
+                    def meta = [:]
+                    meta.seq_type = "All_STs"
+                    return tuple (meta , mash_dist)} // add back "All_STs" as the meta value
+        .combine(GRIPHIN_WORKFLOW.out.directory_samplesheet) // Add samplesheet to all mash distance channels
 
-        // Take in all mash distance files  then use the samplesheet to return the centroid assembly
+        // Take in all mash distance files then use the samplesheet to return the centroid assembly
         // Get centroid, by calculating the average mash distance
         GET_CENTROID (
             centroid_ch
@@ -144,22 +121,23 @@ workflow PHYLOPHOENIX {
         ASSET_CHECK(
             GET_CENTROID.out.centroid_path.splitCsv( header:false, sep:',' ) // Bring in centroid into channel
         )
+        ch_versions = ch_versions.mix(ASSET_CHECK.out.versions)
 
         // Make SNVPHYL channel by joining by seq type
         all_ch = CREATE_META.out.st_snv_samplesheets.join(ASSET_CHECK.out.unzipped_fasta, by: [0])
 
         // Run snvphyl on each st type on its own input
         SNVPHYL (
-            all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, samplesheet]}, all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, unzipped_fasta] }
+            all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, samplesheet]}, all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, unzipped_fasta] } // reference
         )
-        ch_versions = ch_versions.mix(SNVPHYL.out.versions)*/
+        ch_versions = ch_versions.mix(SNVPHYL.out.versions)
 
-        // If you pass --both then samples will be broken up by st type and SNVPhyl run on each st on its own
-        if (params.both==true) {
+        // If you pass --by_st then samples will be broken up by st type and SNVPhyl run on each st on its own
+        if (params.by_st==true) {
 
             // Creates samplesheets with sampleid,seq_type,path_to_assembly
             GET_SEQUENCE_TYPES (
-                GRIPHIN_WORKFLOW.out.griphin_samplesheet, GRIPHIN_WORKFLOW.out.griphin_report
+                GRIPHIN_WORKFLOW.out.directory_samplesheet, GRIPHIN_WORKFLOW.out.griphin_report
             )
             ch_versions = ch_versions.mix(GET_SEQUENCE_TYPES.out.versions)
 
@@ -185,7 +163,7 @@ workflow PHYLOPHOENIX {
                     return tuple( meta, mash_dists)} // Now returns [[meta.seq_type], [ distance_1, distance_2 ]]
 
             // Add samplesheet to all mash distance channels
-            centroid_st_ch =  st_mash_dists.combine(GRIPHIN_WORKFLOW.out.griphin_samplesheet)
+            centroid_st_ch =  st_mash_dists.combine(GRIPHIN_WORKFLOW.out.directory_samplesheet)
 
             // Take in all mash distance files for a seq type and then use the samplesheet to return the centroid assembly
             // Get centroid for ST groups, by calculating the average mash distance
@@ -204,7 +182,8 @@ workflow PHYLOPHOENIX {
 
             // Run snvphyl on each st type on its own input
             SNVPHYL_BY_ST (
-                st_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, samplesheet]}, st_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, unzipped_fasta] }
+                st_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, samplesheet]}, 
+                st_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, unzipped_fasta] } // reference
             )
             ch_versions = ch_versions.mix(SNVPHYL_BY_ST.out.versions)
         }
