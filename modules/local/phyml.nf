@@ -1,16 +1,17 @@
 /* PHYML to make tree */
 process PHYML {
+    tag "${meta.seq_type}"
     label 'process_low'
     container = "staphb/phyml:3.3.20220408"
     //container "https://depot.galaxyproject.org/singularity/phyml:3.3.20211231--hee9e358_0"
 
     input:
-    path(snvAlignment_phy)
+    tuple val(meta), path(snvAlignment_phy)
 
     output:
-    path('phylogeneticTree.newick'),   emit: phylogeneticTree
-    path('phylogeneticTreeStats.txt'), emit: phylogeneticTreeStats
-    path("versions.yml"),              emit: versions
+    tuple val(meta), path('phylogeneticTree.newick'),   emit: phylogeneticTree
+    tuple val(meta), path('phylogeneticTreeStats.txt'), emit: phylogeneticTreeStats
+    path("versions.yml"),                               emit: versions
 
     script:
     """

@@ -16,7 +16,7 @@ process FREEBAYES {
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    #confirm that ST type for the query and reference match
+    #confirm that ST types are the same
     if [[ "${meta.seq_type}" != "${meta_2.seq_type}" ]] && [[ "${meta.seq_type}" != "${meta_3.seq_type}" ]]
     then
         echo "Yikes, the ST type of your reference and query do not match. This shouldn't happen, please report the bug by opening a github issue."

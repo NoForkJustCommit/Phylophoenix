@@ -1,6 +1,6 @@
 /* Filter freebayes vcf */
 process FILTER_FREEBAYES {
-    tag "${meta.id}"
+    tag "${meta.id}_${meta.seq_type}"
     label 'process_low'
     container "staphb/snvphyl-tools:1.8.2"
 

@@ -1,16 +1,17 @@
 /* CONSOLIDATED_ALL */
 process CONSOLIDATE_FILTERED_DENSITY {
+    tag "${meta.seq_type}"
     label 'process_low'
     container 'quay.io/jvhagey/phoenix:base_v2.1.0'
 
     input:
-    path(filtered_densities)
-    path(invalid_positions)
+    tuple val(meta), path(filtered_densities)
+    tuple val(meta), path(invalid_positions)
 
     output:
-    path('filtered_density_all.txt'),   emit: filtered_densities
-    path('new_invalid_positions.bed'),  emit: new_invalid_positions
-    path("versions.yml"),               emit: versions
+    tuple val(meta), path('filtered_density_all.txt'),  emit: filtered_densities
+    tuple val(meta), path('new_invalid_positions.bed'), emit: new_invalid_positions
+    path("versions.yml"),                               emit: versions
 
     script:
     // Adding if/else for if running on ICA it is a requirement to state where the script is, however, this causes CLI users to not run the pipeline from any directory.

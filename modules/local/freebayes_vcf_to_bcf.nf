@@ -1,6 +1,6 @@
 /* Filtered freebayes vcf to bcf */
 process FREEBAYES_VCF_TO_BCF {
-    tag "${meta.id}"
+    tag "${meta.id}_${meta.seq_type}"
     label 'process_low'
     container "staphb/bcftools:1.15"
 

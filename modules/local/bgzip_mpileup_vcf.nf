@@ -1,6 +1,6 @@
 /* Zip mpileup vcf*/
 process BGZIP_MPILEUP_VCF {
-    tag "${meta.id}"
+    tag "${meta.id}_${meta.seq_type}"
     label 'process_low'
     container "staphb/htslib:1.15"
 

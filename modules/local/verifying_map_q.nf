@@ -1,10 +1,11 @@
 /* Verifying Mapping Quality */
 process VERIFYING_MAP_Q {
+    tag "${meta.seq_type}"
     label 'process_medium'
     container "staphb/snvphyl-tools:1.8.2"
 
     input:
-    path(sorted_bams)
+    tuple val(meta), path(sorted_bams)
     val(bam_line)
 
     output:

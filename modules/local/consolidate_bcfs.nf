@@ -1,6 +1,6 @@
 /* Consolidate bcfs */
 process CONSOLIDATE_BCFS {
-    tag "${meta.id}"
+    tag "${meta.id}_${meta.seq_type}"
     label 'process_medium'
     container "staphb/snvphyl-tools:1.8.2"
 
@@ -8,11 +8,11 @@ process CONSOLIDATE_BCFS {
     tuple val(meta), path(mpileup_bcf), path(freebayes_filtered_bcf), path(freebayes_filtered_csi)
 
     output:
-    path( "${meta.id}_consolidated.bcf" ),     emit: consolidated_bcfs
-    path( "${meta.id}_consolidated.vcf" ),     emit: consolidated_vcfs
-    path( "${meta.id}_consolidated.bcf.csi" ), emit: consolidated_bcf_index
-    path( "${meta.id}_filtered_density.txt" ), emit: filtered_densities
-    path("versions.yml"),                      emit: versions
+    tuple val(meta), path( "${meta.id}_consolidated.bcf" ),     emit: consolidated_bcfs
+    tuple val(meta), path( "${meta.id}_consolidated.vcf" ),     emit: consolidated_vcfs
+    tuple val(meta), path( "${meta.id}_consolidated.bcf.csi" ), emit: consolidated_bcf_index
+    tuple val(meta), path( "${meta.id}_filtered_density.txt" ), emit: filtered_densities
+    path("versions.yml"),                                       emit: versions
 
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"

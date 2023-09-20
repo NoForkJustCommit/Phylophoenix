@@ -1,14 +1,15 @@
 /* Making SNV matrix */
 process MAKE_SNV {
+    tag "${meta.seq_type}"
     label 'process_low'
     container "staphb/snvphyl-tools:1.8.2"
 
     input:
-    path(snvAlignment_phy)
+    tuple val(meta), path(snvAlignment_phy)
 
     output:
-    path('snvMatrix.tsv'), emit: snvMatrix
-    path("versions.yml"),  emit: versions
+    tuple val(meta), path('snvMatrix.tsv'), emit: snvMatrix
+    tuple val(meta), path("versions.yml"),  emit: versions
 
     script:
     def container = task.container.toString() - "staphb/snvphyl-tools:"

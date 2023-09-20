@@ -8,8 +8,8 @@ process FIND_REPEATS {
     tuple val(meta), path(refgenome)
 
     output:
-    path("invalid_positions.bed"),    emit: repeats_bed_file
-    path("versions.yml"),             emit: versions
+    tuple val(meta), path("invalid_positions.bed"), emit: repeats_bed_file
+    path("versions.yml"),                           emit: versions
 
     script:
     // get container info

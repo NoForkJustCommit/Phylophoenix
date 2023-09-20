@@ -1,20 +1,21 @@
 /* VCF2SNV_ALIGNMENT Call variants */
 process VCF2SNV_ALIGNMENT {
+    tag "${meta.seq_type}"
     label 'process_medium'
     container "staphb/snvphyl-tools:1.8.2"
 
     input:
-    val(consolidate_bcfs)
-    path(bcf)
-    path(new_invalid_positions)
-    tuple val(seq_type), path(refgenome)
-    path(consolidated_bcf_index)
+    tuple val(meta), val(consolidate_bcfs)
+    tuple val(meta), path(bcf)
+    tuple val(meta), path(new_invalid_positions)
+    tuple val(meta), path(refgenome)
+    tuple val(meta), path(consolidated_bcf_index)
 
     output:
-    path('snvAlignment.phy'), emit: snvAlignment
-    path('vcf2core.tsv'),     emit: vcf2core
-    path('snvTable.tsv'),     emit: snvTable
-    path("versions.yml"),     emit: versions
+    tuple val(meta), path('snvAlignment.phy'), emit: snvAlignment
+    tuple val(meta), path('vcf2core.tsv'),     emit: vcf2core
+    tuple val(meta), path('snvTable.tsv'),     emit: snvTable
+    tuple val(meta), path("versions.yml"),     emit: versions
 
     script:
     def container = task.container.toString() - "staphb/snvphyl-tools:"

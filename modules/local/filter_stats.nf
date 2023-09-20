@@ -1,14 +1,15 @@
 /* Filter Stats */
 process FILTER_STATS {
+    tag "${meta.seq_type}"
     label 'process_low'
     container "staphb/snvphyl-tools:1.8.2"
 
     input:
-    path(snvTable)
+    tuple val(meta), path(snvTable)
 
     output:
-    path('filterStats.txt'), emit: filter_stats
-    path("versions.yml"),    emit: versions
+    tuple val(meta), path('filterStats.txt'), emit: filter_stats
+    path("versions.yml"),                     emit: versions
 
     script:
     // get container info

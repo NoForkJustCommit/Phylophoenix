@@ -76,61 +76,64 @@ workflow PHYLOPHOENIX {
 
     main:
         ch_versions = Channel.empty()
-        // Allow outdir to be relative
-        //outdir_path = Channel.fromPath(params.outdir, relative: true, type: 'dir')
+        // If you pass --no_all then samples will not be rull all together
+        //if (params.no_all==false) {
+            // Allow outdir to be relative
+            //outdir_path = Channel.fromPath(params.outdir, relative: true, type: 'dir')
 
-        // Create report
-        GRIPHIN_WORKFLOW (
-            input_samplesheet_path, input_dir
-        )
-        ch_versions = ch_versions.mix(GRIPHIN_WORKFLOW.out.versions)
+            // Create report
+            GRIPHIN_WORKFLOW (
+                input_samplesheet_path, input_dir
+            )
+            ch_versions = ch_versions.mix(GRIPHIN_WORKFLOW.out.versions)
 
-        // Creates samplesheets with sampleid,seq_type,path_to_assembly
-        GET_COMPARISONS (
-            GRIPHIN_WORKFLOW.out.directory_samplesheet
-        )
-        ch_versions = ch_versions.mix(GET_COMPARISONS.out.versions)
+            // Creates samplesheets with sampleid,seq_type,path_to_assembly
+            GET_COMPARISONS (
+                GRIPHIN_WORKFLOW.out.directory_samplesheet
+            )
+            ch_versions = ch_versions.mix(GET_COMPARISONS.out.versions)
 
-        // creates channel: [ val(meta.id, meta.st), [ scaffolds_1, scaffolds_2 ] ]
-        CREATE_META (
-            GET_COMPARISONS.out.samplesheet, GET_COMPARISONS.out.snv_samplesheet
-        )
+            // creates channel: [ val(meta.id, meta.st), [ scaffolds_1, scaffolds_2 ] ]
+            CREATE_META (
+                GET_COMPARISONS.out.samplesheet, GET_COMPARISONS.out.snv_samplesheet
+            )
 
-        // Run Mash on groups of samples by seq type
-        MASH_DIST (
-            CREATE_META.out.st_scaffolds
-        )
-        ch_versions = ch_versions.mix(MASH_DIST.out.versions)
+            // Run Mash on groups of samples by seq type
+            MASH_DIST (
+                CREATE_META.out.st_scaffolds
+            )
+            ch_versions = ch_versions.mix(MASH_DIST.out.versions)
 
-        // Creating channel [ ST, [distance_1, distance_2] ]
-        dist_ch = MASH_DIST.out.dist.map{ meta, dist -> [ dist ] }.collect() // drop meta and collect all distance files
-        centroid_ch = dist_ch.map{ mash_dist -> 
-                    def meta = [:]
-                    meta.seq_type = "All_STs"
-                    return tuple (meta , mash_dist)} // add back "All_STs" as the meta value
-        .combine(GRIPHIN_WORKFLOW.out.directory_samplesheet) // Add samplesheet to all mash distance channels
+            // Creating channel [ ST, [distance_1, distance_2] ]
+            dist_ch = MASH_DIST.out.dist.map{ meta, dist -> [ dist ] }.collect() // drop meta and collect all distance files
+            centroid_ch = dist_ch.map{ mash_dist -> 
+                        def meta = [:]
+                        meta.seq_type = "All_STs"
+                        return tuple (meta , mash_dist)} // add back "All_STs" as the meta value
+            .combine(GRIPHIN_WORKFLOW.out.directory_samplesheet) // Add samplesheet to all mash distance channels
 
-        // Take in all mash distance files then use the samplesheet to return the centroid assembly
-        // Get centroid, by calculating the average mash distance
-        GET_CENTROID (
-            centroid_ch
-        )
-        ch_versions = ch_versions.mix(GET_CENTROID.out.versions)
+            // Take in all mash distance files then use the samplesheet to return the centroid assembly
+            // Get centroid, by calculating the average mash distance
+            GET_CENTROID (
+                centroid_ch
+            )
+            ch_versions = ch_versions.mix(GET_CENTROID.out.versions)
 
-        // Unzip centroid assembly: SNVPhyl requires it unzipped
-        ASSET_CHECK(
-            GET_CENTROID.out.centroid_path.splitCsv( header:false, sep:',' ) // Bring in centroid into channel
-        )
-        ch_versions = ch_versions.mix(ASSET_CHECK.out.versions)
+            // Unzip centroid assembly: SNVPhyl requires it unzipped
+            ASSET_CHECK(
+                GET_CENTROID.out.centroid_path.splitCsv( header:false, sep:',' ) // Bring in centroid into channel
+            )
+            ch_versions = ch_versions.mix(ASSET_CHECK.out.versions)
 
-        // Make SNVPHYL channel by joining by seq type
-        all_ch = CREATE_META.out.st_snv_samplesheets.join(ASSET_CHECK.out.unzipped_fasta, by: [0])
+            // Make SNVPHYL channel by joining by seq type
+            all_ch = CREATE_META.out.st_snv_samplesheets.join(ASSET_CHECK.out.unzipped_fasta, by: [0])
 
-        // Run snvphyl on each st type on its own input
-        SNVPHYL (
-            all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, samplesheet]}, all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, unzipped_fasta] } // reference
-        )
-        ch_versions = ch_versions.mix(SNVPHYL.out.versions)
+            // Run snvphyl on each st type on its own input
+            SNVPHYL (
+                all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, samplesheet]}, all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, unzipped_fasta] } // reference
+            )
+            ch_versions = ch_versions.mix(SNVPHYL.out.versions)
+        //}
 
         // If you pass --by_st then samples will be broken up by st type and SNVPhyl run on each st on its own
         if (params.by_st==true) {
@@ -178,7 +181,10 @@ workflow PHYLOPHOENIX {
             )
 
             // Make SNVPHYL channel by joining by seq type
-            st_ch = CREATE_META_BY_ST.out.st_snv_samplesheets.join(ASSET_CHECK_BY_ST.out.unzipped_fasta, by: [0,0])
+            st_ch = CREATE_META_BY_ST.out.st_snv_samplesheets.join(ASSET_CHECK_BY_ST.out.unzipped_fasta, by: [0])
+            //CREATE_META_BY_ST.out.st_snv_samplesheets.view()
+            //ASSET_CHECK_BY_ST.out.unzipped_fasta.view()
+            st_ch.view()
 
             // Run snvphyl on each st type on its own input
             SNVPHYL_BY_ST (
