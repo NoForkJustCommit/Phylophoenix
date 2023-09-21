@@ -18,6 +18,13 @@ nextflow.enable.dsl = 2
 
 WorkflowMain.initialise(workflow, params, log)
 
+
+//if you use --no_all phylophoenix assumes you want to do it by st and will set to true
+if (params.no_all==true) {
+    params.by_st = true
+}
+
+
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     NAMED WORKFLOW FOR PIPELINE

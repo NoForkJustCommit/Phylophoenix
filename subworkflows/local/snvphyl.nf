@@ -178,6 +178,24 @@ def sort_collected_by_st_b(input_ch, input_st){
     return complete_list.get(0)
 }
 
+def sort_collected_by_st_c(input_ch, input_st){
+    println(input_ch)
+    def complete_list = []
+    def isolate_st_list = [] // create an empty list to store bams that are of the same ST
+    def meta = [:]
+    meta.seq_type = input_st // set current looping st
+    for (isolate in input_ch) { // loop through isolates
+        checking_st = isolate.get(0).seq_type // get st of current isolate
+        if ( checking_st == input_st ) { // if the current st is the same as the looping st add isolate to list
+            println("adding isolate: " + isolate)
+            // add it to the tuple that was created before
+            isolate_st_list.add(isolate.get(1)) // add bam file to the list
+        }
+    }
+    complete_list.add([meta, isolate_st_list])
+    return complete_list.get(0)
+}
+
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -196,6 +214,7 @@ workflow SNVPHYL {
         CONVERT_INPUT (
             samplesheet
         )
+        ch_versions = ch_versions.mix(CONVERT_INPUT.out.versions)
 
         // SUBWORKFLOW: Read in samplesheet, validate and stage input files
         INPUT_CHECK (
@@ -219,7 +238,6 @@ workflow SNVPHYL {
         index_ch = INDEXING.out.ref_indexes.collect().map{ collect_and_format_indexes(it) }
         // reformat to get reference sequence file and meta.seq_type in the same list together --> helps with joining downstream
         ref_ch = reference.collect().map{ collect_and_format_refs(it) }
-        // get the st 
 
         //2. find repeats process takes 1 input channel as a argument
         FIND_REPEATS(
@@ -344,12 +362,17 @@ workflow SNVPHYL {
         )
         ch_versions = ch_versions.mix(CONSOLIDATE_FILTERED_DENSITY.out.versions)
 
+        /*INPUT_CHECK.out.st_list.flatten().combine( // take the list of STs in data set and flatten so one goes in at a time. 
+            CONSOLIDATE_BCFS.out.consolidated_bcfs.map{ meta, consolidated_bcfs -> [[ meta, consolidated_bcfs ]]} // use map to put the meta and bcfs in same list so they are coupled
+            .collect().map{ it -> [it] } // collect all and add [] so its all one channel for the next map. 
+        ).map{ sts, meta_and_consolidated_bcfs -> sort_collected_by_st_b(meta_and_consolidated_bcfs, sts) }*/
+
         // collect all bcf files and separate them in their own channel by ST
         // We have to start with the list of STs and flatten or so we end up with the right number of output channels. 
         consolidated_bcfs_ch = INPUT_CHECK.out.st_list.flatten().combine( // take the list of STs in data set and flatten so one goes in at a time. 
             CONSOLIDATE_BCFS.out.consolidated_bcfs.map{ meta, consolidated_bcfs -> [[ meta, consolidated_bcfs ]]} // use map to put the meta and bcfs in same list so they are coupled
             .collect().map{ it -> [it] } // collect all and add [] so its all one channel for the next map. 
-        ).map{ sts, meta_and_consolidated_bcfs -> sort_collected_by_st_b(meta_and_consolidated_bcfs, sts) } // get sorted bcfs for the st
+        ).map{ sts, meta_and_consolidated_bcfs -> sort_collected_by_st_c(meta_and_consolidated_bcfs, sts) } // get sorted bcfs for the st
 
         // Making string that looks like... this is needed for the next process
         //--consolidate_vcf 2021JQ-00457-WAPHL-M5130-211029=2021JQ-00457-WAPHL-M5130-211029_consolidated.bcf --consolidate_vcf 2021JQ-00459-WAPHL-M5130-211029=2021JQ-00459-WAPHL-M5130-211029_consolidated.bcf --consolidate_vcf 2021JQ-00460-WAPHL-M5130-211029=2021JQ-00460-WAPHL-M5130-211029_consolidated.bcf

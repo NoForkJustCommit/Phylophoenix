@@ -4,7 +4,7 @@
 
 include { GRIPHIN            } from '../../modules/local/griphin'
 include { CREATE_SAMPLESHEET } from '../../modules/local/create_samplesheet'
-
+include { REMOVE_FAILURES    } from '../../modules/local/remove_failures'
 
 workflow GRIPHIN_WORKFLOW {
     take:
@@ -62,10 +62,19 @@ workflow GRIPHIN_WORKFLOW {
             }
             directory_samplesheet = CREATE_SAMPLESHEET.out.samplesheet
         }
-        
+
+        // Identify samples failed PHX specs
+        REMOVE_FAILURES(
+            GRIPHIN.out.griphin_tsv_report, directory_samplesheet
+        )
+        ch_versions = ch_versions.mix(REMOVE_FAILURES.out.versions)
+
+        //ids_to_remove_ch = REMOVE_FAILURES.out.failured_ids.splitCsv( header:false, sep:',' )
+        // add in the reads to the channel
+        //filtered_reads = reads.map{reads -> [ reads ] }.combine(ids_to_remove_ch).map{reads, ids_to_remove_ch -> filter_reads(reads, ids_to_remove_ch) }.flatten()
 
     emit:
         griphin_report        = GRIPHIN.out.griphin_report
-        directory_samplesheet = directory_samplesheet
+        directory_samplesheet = REMOVE_FAILURES.out.cleaned_dir_samplesheet
         versions              = ch_versions // channel: [ versions.yml ]
 }

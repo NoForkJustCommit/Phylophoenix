@@ -15,7 +15,7 @@ process VCF2SNV_ALIGNMENT {
     tuple val(meta), path('snvAlignment.phy'), emit: snvAlignment
     tuple val(meta), path('vcf2core.tsv'),     emit: vcf2core
     tuple val(meta), path('snvTable.tsv'),     emit: snvTable
-    tuple val(meta), path("versions.yml"),     emit: versions
+    path("versions.yml"),                      emit: versions
 
     script:
     def container = task.container.toString() - "staphb/snvphyl-tools:"

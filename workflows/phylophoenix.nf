@@ -125,6 +125,8 @@ workflow PHYLOPHOENIX {
             )
             ch_versions = ch_versions.mix(ASSET_CHECK.out.versions)
 
+            ASSET_CHECK.out.unzipped_fasta.view()
+
             // Make SNVPHYL channel by joining by seq type
             all_ch = CREATE_META.out.st_snv_samplesheets.join(ASSET_CHECK.out.unzipped_fasta, by: [0])
 
@@ -183,8 +185,6 @@ workflow PHYLOPHOENIX {
             // Make SNVPHYL channel by joining by seq type
             st_ch = CREATE_META_BY_ST.out.st_snv_samplesheets.join(ASSET_CHECK_BY_ST.out.unzipped_fasta, by: [0])
             //CREATE_META_BY_ST.out.st_snv_samplesheets.view()
-            //ASSET_CHECK_BY_ST.out.unzipped_fasta.view()
-            st_ch.view()
 
             // Run snvphyl on each st type on its own input
             SNVPHYL_BY_ST (
@@ -197,17 +197,6 @@ workflow PHYLOPHOENIX {
         CUSTOM_DUMPSOFTWAREVERSIONS (
             ch_versions.unique().collectFile(name: 'collated_versions.yml')
         )
-
-        /*/
-        // MODULE: MultiQC
-        //
-        workflow_summary    = WorkflowGriphin.paramsSummaryMultiqc(workflow, summary_params)
-        ch_workflow_summary = Channel.value(workflow_summary)
-        ch_workflow_summary.view()
-
-        methods_description    = WorkflowGriphin.methodsDescriptionText(workflow, ch_multiqc_custom_methods_description)
-        ch_methods_description = Channel.value(methods_description)
-        ch_methods_description.view()*/
 
     emit:
         griphin_report = GRIPHIN_WORKFLOW.out.griphin_report

@@ -9,7 +9,7 @@ process MAKE_SNV {
 
     output:
     tuple val(meta), path('snvMatrix.tsv'), emit: snvMatrix
-    tuple val(meta), path("versions.yml"),  emit: versions
+    path("versions.yml"),                   emit: versions
 
     script:
     def container = task.container.toString() - "staphb/snvphyl-tools:"

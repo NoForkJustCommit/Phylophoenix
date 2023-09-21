@@ -19,7 +19,7 @@ workflow INPUT_CHECK {
     st_list = reads.collect().map{ get_sts(it) }
 
     emit:
-    reads                                     // channel: [ val(meta), [ reads ] ]
+    reads             = reads // channel: [ val(meta), [ reads ] ]
     valid_samplesheet = SAMPLESHEET_CHECK.out.csv
     st_list           = st_list
     versions          = SAMPLESHEET_CHECK.out.versions // channel: [ versions.yml ]
