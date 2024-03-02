@@ -45,6 +45,16 @@ On release, automated continuous integration tests run the pipeline on a full-si
 
 4. Start running your own analysis!
 
+## Pipeline overview
+
+This is the overview of the pipeline:
+
+![Relatedness Pipeline (2)](https://github.com/DHQP/phylophoenix/assets/21023514/254b0020-583e-4f90-b314-99bc92c91a07)
+
+This is the SNVPhyl workflow: 
+
+![Version 3](https://github.com/DHQP/phylophoenix/assets/21023514/a0b46adc-417d-4914-b111-30e60cfb39bf)
+
 ## Running PhyloPHoeNIx
 
 ### Inputs
