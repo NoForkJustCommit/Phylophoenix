@@ -76,6 +76,65 @@ By default PhyloPHoeNIx creates a SNV matrix and phylogenetic tree from all samp
    ```
 A minimum of 3 samples of the sample ST are required to create a SNV matrix and phylogenetic tree. 
 
+### Outputs
+
+Here is an example output file tree that has reduced samples for space sake (3 samples are the min for creating a phylogenetic tree).
+
+📦phylophoenix_output  
+┣ 📂All_STs  
+┃ ┣ 📜reference.filtered.scaffolds.fa.fai  
+┃ ┣ 📜reference.filtered.scaffolds.fa.sma  
+┃ ┣ 📜reference.filtered.scaffolds.fa.smi  
+┃ ┣ 📜mappingQuality.txt  
+┃ ┣ 📜consolidation_line.txt  
+┃ ┣ 📜phylogeneticTreeStats.txt  
+┃ ┣ 📜bam_line.txt  
+┃ ┣ 📜filterStats.txt  
+┃ ┣ 📜filtered_density_all.txt  
+┃ ┣ 📜new_invalid_positions.bed  
+┃ ┣ 📜phylogeneticTree.newick   
+┃ ┣ 📜snvAlignment.phy  
+┃ ┣ 📜vcf2core.tsv  
+┃ ┣ 📜snvTable.tsv  
+┃ ┗ 📜snvMatrix.tsv  
+┣ 📂ST8  
+┃ ┣ 📂Sample_1  
+┃ ┃ ┣ 📜Sample_1.bam   
+┃ ┃ ┣ 📜Sample_1_consolidated.bcf  
+┃ ┃ ┣ 📜Sample_1_consolidated.bcf.csi  
+┃ ┃ ┣ 📜Sample_1_consolidated.vcf  
+┃ ┃ ┣ 📜Sample_1_filtered_density.txt     
+┃ ┃ ┣ 📜Sample_1_freebayes_filtered.bcf  
+┃ ┃ ┣ 📜Sample_1_freebayes_filtered.bcf.csi  
+┃ ┃ ┣ 📜Sample_1_freebayes_filtered.vcf  
+┃ ┃ ┣ 📜Sample_1_freebayes_filtered.vcf.gz  
+┃ ┃ ┣ 📜Sample_1_freebayes.vcf  
+┃ ┃ ┣ 📜Sample_1_mpileup.bcf  
+┃ ┃ ┣ 📜Sample_1_mpileup.vcf  
+┃ ┃ ┣ 📜Sample_1_mpileup.vcf.gz  
+┃ ┃ ┗ 📜Sample_1_sorted.bam  
+┃ ┣ 📜reference.filtered.scaffolds.fa.fai  
+┃ ┣ 📜reference.filtered.scaffolds.fa.sma   
+┃ ┣ 📜reference.filtered.scaffolds.fa.smi  
+┃ ┣ 📜mappingQuality.txt  
+┃ ┣ 📜consolidation_line.txt  
+┃ ┣ 📜phylogeneticTreeStats.txt  
+┃ ┣ 📜bam_line.txt  
+┃ ┣ 📜filterStats.txt  
+┃ ┣ 📜filtered_density_all.txt  
+┃ ┣ 📜new_invalid_positions.bed  
+┃ ┣ 📜phylogeneticTree.newick   
+┃ ┣ 📜snvAlignment.phy  
+┃ ┣ 📜vcf2core.tsv  
+┃ ┣ 📜snvTable.tsv  
+┃ ┗ 📜snvMatrix.tsv  
+┣ 📂ST_SampleSheets  
+┃ ┗ 📜SNVPhyl_ST8_samplesheet.csv  
+┗ 📂pipeline_info  
+┣ 📜GRiPHin_Summary.xlsx  
+┣ 📜GRiPHin_Summary.tsv  
+┗ 📜Directory_samplesheet.csv  
+
 ## Credits
 
 nf-core/phylophoenix was originally written by Jill Hagey.
