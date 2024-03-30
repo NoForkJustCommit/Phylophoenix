@@ -79,10 +79,10 @@ Alternatively, if you want analyze all samples in one PHoeNIx output directory y
    nextflow run dhqp/phylophoenix -profile cdcsge,singularity --outdir <OUTDIR> --input_dir <PATH TO PHOENIX DIR>
    ```
 
-By default PhyloPHoeNIx creates a SNV matrix and phylogenetic tree from all samples that pass QC in the directory. If you want to also group samples by ST and create additional SNV matrices and phylogenetic trees for each ST type pass the `--by_ST` argument. 
+By default PhyloPHoeNIx creates a SNV matrix and phylogenetic tree from all samples that pass QC in the directory. If you want to also group samples by ST and create additional SNV matrices and phylogenetic trees for each ST type pass the `--by_st` argument. 
 
    ```bash
-   nextflow run dhqp/phylophoenix -profile cdcsge,singularity --outdir <OUTDIR> --input Directory_samplesheet.csv --by_ST
+   nextflow run dhqp/phylophoenix -profile cdcsge,singularity --outdir <OUTDIR> --input Directory_samplesheet.csv --by_st
    ```
 A minimum of 3 samples of the sample ST are required to create a SNV matrix and phylogenetic tree. 
 
