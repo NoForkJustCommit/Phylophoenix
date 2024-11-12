@@ -8,13 +8,13 @@ process MAKE_SNV {
     tuple val(meta), path(snvAlignment_phy)
 
     output:
-    tuple val(meta), path('snvMatrix.tsv'), emit: snvMatrix
-    path("versions.yml"),                   emit: versions
+    tuple val(meta), path("snvMatrix_pre_${meta.seq_type}.tsv"), emit: snvMatrix
+    path("versions.yml"),                                        emit: versions
 
     script:
     def container = task.container.toString() - "staphb/snvphyl-tools:"
     """
-    snv_matrix.pl ${snvAlignment_phy} -o snvMatrix.tsv
+    snv_matrix.pl ${snvAlignment_phy} -o snvMatrix_pre_${meta.seq_type}.tsv
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+sys.dont_write_bytecode = True
 import glob
 import os
 from decimal import *
@@ -15,6 +16,11 @@ from xlsxwriter.utility import xl_rowcol_to_cell
 import csv
 from Bio import SeqIO
 from itertools import chain
+import species_specific_griphin
+
+# Set display options to show all rows and columns
+#pd.set_option('display.max_rows', None)  # Show all rows
+#pd.set_option('display.max_columns', None)  # Show all columns
 
 ##Makes a summary Excel file when given a series of output summary line files from PhoeNiX
 ##Usage: >python GRiPHin.py -s ./samplesheet.csv -a ResGANNCBI_20220915_srst2.fasta -c control_file.csv -o output --phoenix --scaffolds
@@ -34,6 +40,8 @@ def parseArgs(args=None):
     parser.add_argument('--coverage', default=30, required=False, dest='set_coverage', help='The coverage cut off default is 30x.')
     parser.add_argument('--scaffolds', dest="scaffolds", default=False, action='store_true', help='Turn on with --scaffolds to keep samples from failing/warnings/alerts that are based on trimmed data. Default is off.')
     parser.add_argument('--phoenix', dest="phoenix", default=False, action='store_true', required=False, help='Use for -entry PHOENIX rather than CDC_PHOENIX, which is the default.')
+    parser.add_argument('--shigapass', dest="shigapass", default=False, action='store_true', required=False, help='Use for when there are E. coli or Shigella isolates in samplesheet.')
+    parser.add_argument('--centar', dest="centar", default=False, action='store_true', required=False, help='Use for when there are C. diff isolates in samplesheet.')
     parser.add_argument('--version', action='version', version=get_version())# Add an argument to display the version
     return parser.parse_args()
 
@@ -54,7 +62,6 @@ def Get_Parent_Folder(directory):
     project = os.path.split(os.path.split(os.path.split(directory)[0])[0])[1]
     # get everything after CEMB
     parent_folder = os.path.split(os.path.split(os.path.split(os.path.split(directory)[0])[0])[0])[0]
-    #parent_folder = os.path.split(cemb_path)[1].lstrip("/") # remove backslash on left side to make it clean  #this is only the last name of the folder not full path
     return project, parent_folder
 
 def make_ar_dictionary(ar_db):
@@ -100,7 +107,7 @@ def get_kraken_info(kraken_trim, kraken_wtasmbld, sample_name):
             Trim_Genus = "None"
         if len(Trim_Species) == 0:
             Trim_Species = "None"
-        Trim_kraken = Trim_Genus + " (" + Trim_Genus_percent + ") " + Trim_Species + " (" + Trim_Species_percent + ")"
+        Trim_kraken = Trim_Genus + " (" + Trim_Genus_percent + ") " + Trim_Species + " (" + Trim_Species_percent + ")."
         #guess what the mlst scheme is to check later
         scheme_guess_kraken_trimd = Trim_Genus[0].lower() + Trim_Species[0:4]
     except FileNotFoundError:
@@ -125,14 +132,14 @@ def get_kraken_info(kraken_trim, kraken_wtasmbld, sample_name):
             Asmbld_Genus = "None"
         if len(Asmbld_Species) == 0:
             Asmbld_Species = "None"
-        Asmbld_kraken = Asmbld_Genus + " (" + Asmbld_Genus_percent + ") " + Asmbld_Species + " (" + Asmbld_Species_percent + ")"
+        Asmbld_kraken = Asmbld_Genus + " (" + Asmbld_Genus_percent + ") " + Asmbld_Species + " (" + Asmbld_Species_percent + ")."
         #guess what the mlst scheme is to check later
         scheme_guess_kraken_wt = Asmbld_Genus[0].lower() + Asmbld_Species[0:4]
     except FileNotFoundError:
         print("Warning: " + sample_name + ".wtasmbld_summary.txt not found")
         Asmbld_kraken = 'Unknown'
         Asmbld_unclassified_percent = "Unknown"
-        Asmbld_Genus_percent = 0
+        Asmbld_Genus_percent = "Unknown"
         scheme_guess_kraken_wt = ""
     return Trim_kraken, Trim_Genus_percent, Asmbld_kraken, Asmbld_Genus_percent, Trim_unclassified_percent, Asmbld_unclassified_percent, scheme_guess_kraken_wt, scheme_guess_kraken_trimd
 
@@ -243,7 +250,7 @@ def compile_alerts(scaffolds_entry, coverage, assembly_stdev, gc_stdev):
         pass
     if str(assembly_stdev) == "NA":
         if str(gc_stdev) == "NA":
-            alerts.append("Assembly ratio and GC% STDev are N/A <10 genomes as reference")
+            alerts.append("Assembly ratio and GC% STDev are N/A <10 genomes as reference.")
         else:
             alerts.append("Open Github issue assembly ratio STDev is N/A but not GC%. This shouldn't happen.")
     elif str(gc_stdev) == "NA":
@@ -275,32 +282,42 @@ def compile_warnings(scaffolds_entry, Total_Trimmed_reads, Total_Raw_reads, Q30_
         if Q30_R2_per == "Unknown" or float(Q30_R2_per) < float(70.00):
             warnings.append("Average Q30 of raw R2 reads <{:.2f}%".format(int(70.00)))
         if Trim_Q30_R1_per == "Unknown" or float(Trim_Q30_R1_per) < float(90.00):
-            warnings.append("Average Q30 of trimmed R1 reads <{:.2f}% ({:.2f}%)".format(float(90.00),float(Trim_Q30_R1_per)))
+            try:
+                warnings.append("Average Q30 of trimmed R1 reads <{:.2f}% ({:.2f}%)".format(float(90.00),float(Trim_Q30_R1_per)))
+            except ValueError:
+                warnings.append("Average Q30 of trimmed R1 reads <{:.2f}% ({})".format(float(90.00),Trim_Q30_R1_per))
         if Trim_Q30_R2_per == "Unknown" or float(Trim_Q30_R2_per) < float(70.00):
-            warnings.append("Average Q30 of trimmed R2 reads <{:.2f}% ({:.2f}%)".format(int(70.00), float(Trim_Q30_R2_per)))
-        if Trim_unclassified_percent == "trimmed" or float(Trim_unclassified_percent) > float(30.00):
-            warnings.append(">{:.2f}% unclassifed trimmed reads".format(int(30)))
+            try:
+                warnings.append("Average Q30 of trimmed R1 reads <{:.2f}% ({:.2f}%)".format(float(90.00),float(Trim_Q30_R2_per)))
+            except ValueError:
+                warnings.append("Average Q30 of trimmed R1 reads <{:.2f}% ({})".format(float(90.00),Trim_Q30_R2_per))
+        if Trim_unclassified_percent == "Unknown" or float(Trim_unclassified_percent) > float(30.00):
+            warnings.append(">{:.2f}% unclassifed trimmed reads.".format(int(30)))
         if len(kraken_trim_genus) >=2:
-            warnings.append(">=2 genera had >{:.2f}% of reads assigned to them".format(int(25)))
-        if float(Trim_Genus_percent) <float(70.00):
-            warnings.append("<70% of reads assigned to top genera hit ({:.2f}%)".format(float(Trim_Genus_percent)))
+            warnings.append(">=2 genera had >{:.2f}% of reads assigned to them.".format(int(25)))
+        if Trim_Genus_percent == "Unknown" or float(Trim_Genus_percent) <float(70.00):
+            try:
+                warnings.append("<70% of reads assigned to top genera hit ({:.2f}%)".format(float(Trim_Genus_percent)))
+            except ValueError:
+                warnings.append("<70% of reads assigned to top genera hit ({})".format(Trim_Genus_percent))
+
     else:
         pass
     if gc_metrics[0] != "NA" and gc_metrics[0] != "Unknown":
         # sample_gc > (species_gc_mean + out_of_range_stdev)
         if float(gc_metrics[1]) > (float(gc_metrics[3])+float(gc_metrics[2])): #check that gc% is < 2.58 stdev away from mean gc of species
-            warnings.append("GC% >2.58 stdev away from mean GC of {:.2f}%.".format(float(gc_metrics[3])))
+            warnings.append("GC% >2.58 stdev away from mean GC of {:.2f}%".format(float(gc_metrics[3])))
     if scaffolds != "Unknown" and Wt_asmbld_unclassified_percent != "Unknown" and Asmbld_Genus_percent != "Unknown":
         if int(scaffolds) > int(200) and int(scaffolds) < int(500): # between 200-500 
-            warnings.append("High scaffold count 200-500 ({}).".format(int(scaffolds)))
+            warnings.append("High scaffold count 200-500 ({})".format(int(scaffolds)))
         if float(Wt_asmbld_unclassified_percent) > float(30.00):
-            warnings.append(">{:.2f}% unclassifed weighted scaffolds.".format(int(30)))
+            warnings.append(">{:.2f}% unclassifed weighted scaffolds".format(int(30)))
         if float(Asmbld_Genus_percent) <float(70.00):
             warnings.append("<70% of weighted scaffolds assigned to top genera hit ({:.2f}%)".format(float(Asmbld_Genus_percent)))
     elif scaffolds == "Unknown" and Wt_asmbld_unclassified_percent == "Unknown" and Asmbld_Genus_percent == "Unknown":
         warnings.append("No assembly file found possible SPAdes failure.")
     if len(kraken_wtasmbld_genus) >=2:
-        warnings.append(">=2 genera had >{:.2f}% of wt scaffolds assigned to them.".format(int(25))) 
+        warnings.append(">=2 genera had >{:.2f}% of wt scaffolds assigned to them".format(int(25))) 
     if MLST_scheme_1 != "-" and not MLST_scheme_1.startswith(scheme_guess):
         if genus == "Enterobacter" and MLST_scheme_1 == "ecloacae":
             pass
@@ -315,7 +332,7 @@ def compile_warnings(scaffolds_entry, Total_Trimmed_reads, Total_Raw_reads, Q30_
         elif (genus == "Shigella" or genus == "Escherichia") and MLST_scheme_1.startswith("ecoli"):
             pass
         else:
-            warnings.append("Check 1st MLST scheme matches taxa IDed.")
+            warnings.append("Check 1st MLST scheme matches taxa IDed")
     if MLST_scheme_2 != "-" and not MLST_scheme_2.startswith(scheme_guess):
         if genus == "Enterobacter" and MLST_scheme_2 == "ecloacae":
             pass
@@ -330,15 +347,15 @@ def compile_warnings(scaffolds_entry, Total_Trimmed_reads, Total_Raw_reads, Q30_
         elif (genus == "Shigella" or genus == "Escherichia") and MLST_scheme_2.startswith("ecoli"):
             pass
         else:
-            warnings.append("Check 2nd MLST scheme matches taxa IDed.")
+            warnings.append("Check 2nd MLST scheme matches taxa IDed")
     if FastANI_ID != "Unknown":
         if float(FastANI_ID) < float(95.00):
-            warnings.append("FastANI match is <95%.")
+            warnings.append("FastANI match is <95%")
         if float(FastANI_coverage) < float(90.00):
-            warnings.append("FastANI coverage is <90%.")
+            warnings.append("FastANI coverage is <90%")
     if busco_id != "Unknown":
         if float(busco_id) < float(97.00):
-            warnings.append("BUSCO match is <97%.")
+            warnings.append("BUSCO match is <97%")
     #add in fastani warning
     if fastani_warning != None:
         warnings.append(fastani_warning)
@@ -390,29 +407,30 @@ def parse_kraken_report(kraken_trim_report, kraken_wtasmbld_report, sample_name)
         kraken_wtasmbld_report = 'Unknown'
     return kraken_trim_genus, kraken_wtasmbld_genus
 
-def Checking_auto_pass_fail(fairy_file, scaffolds_entry, coverage, length, assembly_stdev, asmbld_ratio, set_coverage, scaffolds):
+def Checking_auto_pass_fail(fairy_files, scaffolds_entry, coverage, length, assembly_stdev, asmbld_ratio, set_coverage, scaffolds):
     """Checking auto pass fail conditions"""
     #assembly_stdev = assembly_ratio_line.split("(")[1].split(")")[0].split(" ")[1] # parse to get standard dev, old method
     QC_reason = []
     QC_result = [] # set as blank to begin with, need this to assign variable in QC_result == "FAIL": line
     QC_result.append("PASS") #set default as PASS
     #check output of fairy and determine if reads were corrupt or had unequal number of reads
-    with open(fairy_file, 'r') as f:
-        for line in f:
-            if ('FAILED CORRUPTION CHECK!' in line):
-                fastq_file_failure = str(line.split(' ')[10])
-                QC_result.append("FAIL")
-                QC_reason.append(str(fastq_file_failure) +" is corrupt and is unable to be unzipped.")
-            if ('FAILED: The number of reads in R1/R2 are NOT the same!' in line):
-                QC_result.append("FAIL")
-                QC_reason.append("The # of reads in raw R1/R2 files are NOT equal.")
-            if ('FAILED: There are 0 reads in' in line):
-                QC_result.append("FAIL")
-                QC_reason.append("No reads remain after trimming.")
-            if ('FAILED: No scaffolds in ' in line):
-                QC_result.append("FAIL")
-                QC_reason.append("No scaffolds were >500bp.")
-    f.close()
+    for fairy_file in fairy_files:
+        with open(fairy_file, 'r') as f:
+            for line in f:
+                if ('FAILED CORRUPTION CHECK!' in line):
+                    fastq_file_failure = str(line.split(' ')[10])
+                    QC_result.append("FAIL")
+                    QC_reason.append(str(fastq_file_failure) +" is corrupt and is unable to be unzipped")
+                if ('FAILED: The number of reads in R1/R2 are NOT the same!' in line):
+                    QC_result.append("FAIL")
+                    QC_reason.append("The # of reads in raw R1/R2 files are NOT equal")
+                if ('FAILED: There are 0 reads in' in line):
+                    QC_result.append("FAIL")
+                    QC_reason.append("No reads remain after trimming")
+                if ('FAILED: No scaffolds in ' in line):
+                    QC_result.append("FAIL")
+                    QC_reason.append("No scaffolds were >500bp")
+        f.close()
     if scaffolds_entry == False: # if its not being used for scaffolds entry check estimated coverage otherwise don't
         if coverage == "Unknown" or int(coverage) < int(set_coverage):
             QC_result.append("FAIL")
@@ -434,7 +452,8 @@ def Checking_auto_pass_fail(fairy_file, scaffolds_entry, coverage, length, assem
             QC_reason.append("assembly stdev >2.58 (" + str(assembly_stdev) + ")")
     if str(scaffolds) == "Unknown" or int(scaffolds) > int(500):
         QC_result.append("FAIL")
-        QC_reason.append("High scaffold count >500 ({}).".format(str(scaffolds)))
+        QC_reason.append("High scaffold count >500 ({})".format(str(scaffolds)))
+    QC_reason = set(QC_reason)
     QC_reason = ', '.join(QC_reason)
     #checking if it was a pass
     if any("FAIL" in sub for sub in QC_result):
@@ -643,7 +662,7 @@ def parse_ani(fast_ani_file):
         scheme_guess = "NA NA"
         fastani_warning = "No hits with >=80% ANI."
     else:
-        fastani_warning = None
+        fastani_warning = ""
         ani_df = pd.read_csv(fast_ani_file, sep='\t', header=0) # should only be one line long.
         ID = ani_df["% ID"][0]
         coverage = ani_df["% Coverage"][0]
@@ -701,6 +720,23 @@ def parse_srst2_ar(srst2_file, ar_dic, final_srst2_df, sample_name):
     final_srst2_df = pd.concat([final_srst2_df, df], axis=0, sort=True, ignore_index=False).fillna("")
     return final_srst2_df
 
+# Define the custom function to update the Taxa_ID based on conditions
+def fill_taxa_id(row):
+    if row['Taxa_Source'] == 'ANI_REFSEQ':
+        return row['FastANI_Organism']
+    elif row['Taxa_Source'] == 'kraken2_wtasmbld':
+        genus = row['Kraken_ID_WtAssembly_%'].split(" ")[0]
+        species = row['Kraken_ID_WtAssembly_%'].split(" ")[0]
+        return genus + " " + species
+    elif row['Taxa_Source'] == 'kraken2_trimmed':
+        genus = row['Kraken_ID_Raw_Reads_%'].split(" ")[0]
+        species = row['Kraken_ID_Raw_Reads_%'].split(" ")[0]
+        return genus + " " + species
+    elif row['Taxa_Source'] == 'ShigaPass':
+        return row['ShigaPass_Organism']
+    else:
+        return ''  # Default case if no condition matches
+
 def Get_Metrics(phoenix_entry, scaffolds_entry, set_coverage, srst2_ar_df, pf_df, ar_df, hv_df, trim_stats, raw_stats, kraken_trim, kraken_trim_report, kraken_wtasmbld_report, kraken_wtasmbld, quast_report, busco_short_summary, asmbld_ratio, gc_file, sample_name, mlst_file, fairy_file, gamma_ar_file, gamma_pf_file, gamma_hv_file, fast_ani_file, tax_file, srst2_file, ar_dic):
     '''For each step to gather metrics try to find the file and if not then make all variables unknown'''
     try:
@@ -756,7 +792,7 @@ def Get_Metrics(phoenix_entry, scaffolds_entry, set_coverage, srst2_ar_df, pf_df
         print("Warning: " + sample_name + ".fastANI.txt not found")
         ani_source_file = fastani_ID = fastani_coverage = fastani_organism = 'Unknown'
         FastANI_output_list = [ani_source_file, fastani_ID, fastani_coverage, fastani_organism]
-        scheme_guess_fastani = ""
+        scheme_guess_fastani = fastani_warning = ""
     try:
         ar_df = parse_gamma_ar(gamma_ar_file, sample_name, ar_df)
     except FileNotFoundError: 
@@ -878,7 +914,7 @@ def Get_Files(directory, sample_name):
     kraken_wtasmbld_report = directory + "/kraken2_asmbld_weighted/" + sample_name + ".kraken2_wtasmbld.summary.txt"
     quast_report = directory + "/quast/" + sample_name + "_summary.tsv"
     mlst_file = directory + "/mlst/" + sample_name + "_combined.tsv"
-    fairy_file = directory + "/file_integrity/" + sample_name + "_summary.txt"
+    fairy_file = glob.glob(directory + "/file_integrity/" + sample_name + "_*_summary.txt")
     # This creates blank files for if no file exists. Varibles will be made into "Unknown" in the Get_Metrics function. Need to only do this for files determined by glob
     # You only need this for glob because glob will throw an index error if not.
     try:
@@ -982,6 +1018,7 @@ Scaffold_Count_L, busco_lineage_L, percent_busco_L, gc_L, assembly_ratio_L, asse
         'Assembly_Length'            : Assembly_Length_L,
         'Assembly_Ratio'             : assembly_ratio_L,
         'Assembly_StDev'             : assembly_stdev_L,
+        'Final_Taxa_ID'              : "", # we will fill this later
         'Taxa_Source'                : tax_method_L,
         'Kraken_ID_Raw_Reads_%'      : Trim_kraken_L,
         'Kraken_ID_WtAssembly_%'     : Asmbld_kraken_L,
@@ -1017,6 +1054,7 @@ Scaffold_Count_L, busco_lineage_L, percent_busco_L, gc_L, assembly_ratio_L, asse
         'Assembly_Length'            : Assembly_Length_L,
         'Assembly_Ratio'             : assembly_ratio_L,
         'Assembly_StDev'             : assembly_stdev_L,
+        'Final_Taxa_ID'              : "", # we will fill this later
         'Taxa_Source'                : tax_method_L,
         'BUSCO_Lineage'              : busco_lineage_L,
         'BUSCO_%Match'               : percent_busco_L,
@@ -1037,29 +1075,93 @@ Scaffold_Count_L, busco_lineage_L, percent_busco_L, gc_L, assembly_ratio_L, asse
     df = pd.DataFrame(data)
     return df
 
-def add_srst2(ar_df, srst2_ar_df):
-    ar_combined_df = pd.DataFrame() #create new dataframe to fill
+def srst2_dedup(srst2_ar_df, gamma_ar_df):
+    ##### First, we will drop columns with "partial" in the name
+    # Filter out columns that contain the substring
+    columns_to_drop = [col for col in srst2_ar_df.columns if "partial" in col]
+    # Drop the columns
+    srst2_ar_df = srst2_ar_df.drop(columns=columns_to_drop)
+    ##### Second we will look for GAMMA + genes, but different alleles found my SRST2 and dedup them (AKA we will remove and not report them) #####
+    # Iterate over each row in the first DataFrame -> this will give all the srst2 genes and alleles
+    for idx, row in srst2_ar_df.iterrows():
+        #create empty list for each row
+        gene_list = []
+        # For each column in the row find the srst2 hits
+        for col_name in srst2_ar_df.columns:
+            if pd.notna(row[col_name]) and row[col_name] != "":
+                # split on _ to get just the gene/allele name for matching
+                gene = col_name.split('_')[0].split("-")[0]
+                gene_list.append(gene)
+        # Extract unique genes in srst2 - positive SRST2 hits
+        unique_gene_list = list(set(gene_list))
+        # Check if the gene name (column name) exists in the GAMMA AR DataFrame -> if there is a match these would be GAMMA +, but a different allele and we want to remove these.
+        for gene in unique_gene_list:
+            if gamma_ar_df.columns.str.contains(gene).any():
+                # Check for partial string match in the column names of the gamma DataFrame
+                matching_columns = gamma_ar_df.columns[gamma_ar_df.columns.str.contains(gene)].tolist()
+                for column in matching_columns:
+                    # check that for the column in question there is also a value found in the GAMMA column
+                    if pd.notna(gamma_ar_df.at[str(idx), column]) and gamma_ar_df.at[str(idx), column] != "":
+                        # Check if there is a value in the corresponding column in the second DataFrame
+                        srst2_ar_df.at[idx, srst2_ar_df.columns.str.contains(gene)] = ""
+                        #print(f"sample {idx}: Value found in column '{gene}' of srst2_df and this matches the '{matching_columns}' of gamma_df (alleles with srst/gamma or only gamma positive) and was removed for deduplication purposes.")
+    ##### Third, we will look at GAMMA- samples and check the # of gene alleles and filter to only have the top hits. ####
+    # These are now the GAMMA neg hits and we will now check the number of alleles for each gene - first we do some dataframe rearranging to make it "easier"
+    # Check if DataFrame is not empty
+    if not srst2_ar_df.empty:
+        gamma_neg_srst2 = srst2_ar_df.drop(srst2_ar_df.columns[srst2_ar_df.apply(lambda col: all(val == '' or pd.isna(val) for val in col))], axis=1)
+        # check the number of alleles per gene so that we only have those that are singles and will be reported
+        gamma_neg_genes = pd.DataFrame(gamma_neg_srst2.apply(lambda row: [column.split('_')[0] for column in row.index if row[column]], axis=1))
+        gamma_neg_genes.columns = ["neg_genes"] # a column name to make it easier
+        # Iterate over each row
+        for index, row in gamma_neg_genes.iterrows():
+            gene_list = []
+            multiple_occurrences = []
+            count = 0
+            for val in row["neg_genes"]:
+                gene_list.append(val.split("-")[0]) # split to remove allele number and just have gene name
+            for val in gene_list:
+                count = count + 1 #only continue below if we have seen this gene before
+                if gene_list.count(val) > 1 and val not in multiple_occurrences:
+                    #get a dataframe of the gene in question
+                    df = pd.DataFrame(gamma_neg_srst2.loc[row.name, gamma_neg_srst2.columns.str.contains(val)])
+                    # Define the regex pattern to extract Percent_Match and Coverage and Extract Percent_Match and Coverage using str.extract
+                    df[['Percent_Match', 'Coverage']] = df[row.name].str.extract(r'\[(\d+)NT/(\d+)\]S')
+                    # Convert extracted values to integer type and keep NA values
+                    df['Percent_Match'] = pd.to_numeric(df['Percent_Match'], errors='coerce')
+                    df['Coverage'] = pd.to_numeric(df['Coverage'], errors='coerce')
+                    df = df.dropna(subset=['Percent_Match']) #drop rows with no values
+                    ### Filtering steps to get the top hit for srst2
+                    # Step 1: Identify the Max Percent_Match
+                    max_percent_match = df['Percent_Match'].max()
+
+                    # Step 2: Filter rows to keep rows with the max Percent_Match
+                    max_percent_match_rows = df[df['Percent_Match'] == max_percent_match]
+
+                    # Step 3: Identify the max Coverage among rows with the max Percent_Match
+                    max_coverage = max_percent_match_rows['Coverage'].max()
+
+                    # Step 4: Drop rows with the lowest Percent_Match and, if needed, with the lowest Coverage
+                    if len(max_percent_match_rows) > 1:  # Only consider Coverage if there are ties in Percent_Match
+                        rows_to_drop = max_percent_match_rows[max_percent_match_rows['Coverage'] != max_coverage].index
+                        # Drop the identified rows
+                        df_cleaned = df.drop(rows_to_drop)
+                    else:
+                        max_percent_mismatch_rows = df[df['Percent_Match'] != max_percent_match]
+                        df_cleaned = df.drop(max_percent_mismatch_rows.index)
+                    # Now that we know what alleles we are keeping based on the top hits (these are the row names), we will get the inverse row names so we know what to drop
+                    index_diff = df.index.difference(df_cleaned.index)
+                    # For the sample in question remove the data from cell if the particular allele(s) we want to drop
+                    srst2_ar_df.at[index, index_diff.tolist()] = ""
+                multiple_occurrences.append(val)
+        srst2_ar_df = srst2_ar_df.drop(srst2_ar_df.columns[srst2_ar_df.apply(lambda col: all(val == '' or pd.isna(val) for val in col))], axis=1)
+    return srst2_ar_df
+
+def order_ar_gene_columns(ar_combined_df):
     ar_combined_ordered_df = pd.DataFrame() #create new dataframe to fill
-    common_cols = ar_df.columns.intersection(srst2_ar_df.columns) #get column names that are in both dataframes
-    # Combine values in cells for columns that are in both dataframes
-    for col in common_cols:
-        if col != "WGS_ID":
-            ar_combined_df[col] = (srst2_ar_df[col].map(str) + ":" + ar_df[col]).replace(':', "")
-            ar_combined_df[col] = ar_combined_df[col].map(lambda x: str(x).lstrip(':').rstrip(':')) # clean up : for cases where there isn't a gamma and srst2 for all rows
-            ar_combined_df = ar_combined_df.copy() #defragment to correct "PerformanceWarning: DataFrame is highly fragmented."
-        else:
-            ar_combined_df[col] = srst2_ar_df[col]
-    # check if you missed any rows, if there is a sample in ar_db, that is not in the srst2 then you will have it have NA in rows when joined
-    # drop columns from srst2 dataframe that are in common in the ar_db as these are already in ar_combined_df
-    srst2_ar_df.drop(common_cols, axis = 1, inplace=True)
-    ar_df.drop(common_cols, axis = 1, inplace=True)
-    # Add cols that are unique to srst2
-    ar_combined_df = ar_combined_df.join(srst2_ar_df)
-    # Add cols that are unique to gamma ar_df
-    ar_combined_df = ar_combined_df.join(ar_df)
     #fixing column orders
-    ar_combined_ordered_df = pd.concat([ar_combined_ordered_df, ar_combined_df[['AR_Database', 'WGS_ID']]], axis=1, sort=False) # first adding back in ['AR_Database', 'WGS_ID']
-    ar_drugs_list = ar_combined_df.columns.str.extract('.*\((.*)\).*').values.tolist() # get all ar drug names form column names
+    ar_combined_ordered_df = pd.concat([ar_combined_ordered_df, ar_combined_df[['AR_Database', 'WGS_ID','No_AR_Genes_Found']]], axis=1, sort=False) # first adding back in ['AR_Database', 'WGS_ID']
+    ar_drugs_list = ar_combined_df.columns.str.extract('.*\\((.*)\\).*').values.tolist() # get all ar drug names form column names
     sorted_list = sorted(list(set([str(drug) for sublist in ar_drugs_list for drug in sublist]))) #get unique drug names (with set) and sort list
     sorted_drug_names = [x for x in sorted_list if x != 'nan'] #get unique drug names (with set) and drop nan that comes from WGS_ID column and sort
     # create list to add to
@@ -1073,10 +1175,36 @@ def add_srst2(ar_df, srst2_ar_df):
     # unnest list
     all_column_names = list(chain(*all_column_names))
     #add back AR_DB and WGS_ID to front of list
+    all_column_names.insert(0, "No_AR_Genes_Found")
     all_column_names.insert(0, "WGS_ID")
     all_column_names.insert(0, "AR_Database")
     # reorder columns - should be alphabetical by drug name and within drug name genes are alphabetically listed
     ar_combined_ordered_df = ar_combined_ordered_df.reindex(all_column_names, axis=1)
+    return ar_combined_ordered_df
+
+def add_srst2(ar_df, srst2_ar_df):
+    ar_combined_df = pd.DataFrame() #create new dataframe to fill
+    common_cols = ar_df.columns.intersection(srst2_ar_df.columns) #get column names that are in both dataframes --> These are GAMMA +
+    # Combine values in cells for columns that are in both dataframes as these would be the same gene alleles for GAMMA and SRST2
+    for col in common_cols:
+        if col != "WGS_ID":
+            ar_combined_df[col] = (srst2_ar_df[col].map(str) + ":" + ar_df[col]).replace(':', "")
+            ar_combined_df[col] = ar_combined_df[col].map(lambda x: str(x).lstrip(':').rstrip(':')) # clean up : for cases where there isn't a gamma and srst2 for all rows
+            ar_combined_df = ar_combined_df.copy() #defragment to correct "PerformanceWarning: DataFrame is highly fragmented."
+        else:
+            ar_combined_df[col] = srst2_ar_df[col]
+    # check if you missed any rows, if there is a sample in ar_db, that is not in the srst2 then you will have it have NA in rows when joined
+    # drop columns from srst2 dataframe that are in common in the ar_db as these are already in ar_combined_df
+    srst2_ar_df.drop(common_cols, axis = 1, inplace=True) # This will leave GAMMA- samples
+    ar_df.drop(common_cols, axis = 1, inplace=True)
+    # Add cols that are unique to srst2
+    ############### DEDUPING FOR SRST2 ###############
+    srst2_ar_df = srst2_dedup(srst2_ar_df, ar_df.join(ar_combined_df))
+    ar_combined_df = ar_combined_df.join(srst2_ar_df)
+    # Add cols that are unique to gamma ar_df
+    ar_combined_df = ar_combined_df.join(ar_df)
+    #fixing column orders
+    ar_combined_ordered_df = order_ar_gene_columns(ar_combined_df)
     return ar_combined_ordered_df
 
 def big5_check(final_ar_df):
@@ -1085,22 +1213,19 @@ def big5_check(final_ar_df):
     final_ar_df = final_ar_df.drop(['AR_Database','WGS_ID'], axis=1)
     all_genes = final_ar_df.columns.tolist()
     big5_keep = [ "blaIMP", "blaVIM", "blaNDM", "blaKPC"] # list of genes to highlight
-    blaOXA_48_like = [ "blaOXA-48", "blaOXA-54", "blaOXA-162", "blaOXA-181", "blaOXA-199", "blaOXA-204", "blaOXA-232", "blaOXA-244", "blaOXA-245", "blaOXA-247", "blaOXA-252", "blaOXA-370", "blaOXA-416", "blaOXA-436", \
-    "blaOXA-438", "blaOXA-439", "blaOXA-484", "blaOXA-505", "blaOXA-514", "blaOXA-515", "blaOXA-517", "blaOXA-519", "blaOXA-535", "blaOXA-538", "blaOXA-546", "blaOXA-547", "blaOXA-566", "blaOXA-567", "blaOXA-731", \
-    "blaOXA-788", "blaOXA-793", "blaOXA-833", "blaOXA-894", "blaOXA-918", "blaOXA-920", "blaOXA-922", "blaOXA-923", "blaOXA-924", "blaOXA-929", "blaOXA-933", "blaOXA-934", "blaOXA-1038", "blaOXA-1039", "blaOXA-1055", "blaOXA-1119", "blaOXA-1146", \
-    "blaOXA-1167","blaOXA-1181","blaOXA-1200","blaOXA-1201","blaOXA-1205","blaOXA-1207","blaOXA-1211","blaOXA-1212","blaOXA-1213" ]
+    blaOXA_48_like = [ "48", "54", "162", "181", "199", "204", "232", "244", "245", "247", "252", "370", "416", "436", "438", "439", "484", "505", "514", "515", "517", "519", "535", "538", "546", "547", "566", "567", "731", \
+    "788", "793", "833", "894", "918", "920", "922", "923", "924", "929", "933", "934", "1038", "1039", "1055", "1119", "1146", "1167","1181","1200","1201","1205","1207","1211","1212","1213" ]
     # Acquired OXA families 23, 24/40, 58, 143, 235
-    blaOXA_23_like = [ "blaOXA-23","blaOXA-27","blaOXA-49","blaOXA-73","blaOXA-103","blaOXA-105","blaOXA-133","blaOXA-146","blaOXA-165","blaOXA-166","blaOXA-167","blaOXA-168","blaOXA-169","blaOXA-170","blaOXA-171","blaOXA-225", \
-                      "blaOXA-239","blaOXA-366","blaOXA-398","blaOXA-422","blaOXA-423","blaOXA-435","blaOXA-440","blaOXA-481*","blaOXA-482","blaOXA-483","blaOXA-565","blaOXA-657","blaOXA-806","blaOXA-807","blaOXA-808","blaOXA-809", \
-                        "blaOXA-810","blaOXA-811","blaOXA-812","blaOXA-813","blaOXA-814","blaOXA-815","blaOXA-816","blaOXA-817","blaOXA-818","blaOXA-911","blaOXA-966","blaOXA-967","blaOXA-968","blaOXA-969","blaOXA-1095","blaOXA-1216","blaOXA-1223" ]
-    blaOXA_24_40_like = [ "blaOXA-24","blaOXA-25","blaOXA-26","blaOXA-72","blaOXA-139","blaOXA-160","blaOXA-207","blaOXA-437","blaOXA-653","blaOXA-897","blaOXA-1040","blaOXA-1081","blaOXA-1225" ]
-    blaOXA_58_like = [ ]
-    blaOXA_143_like = [ ]
-    blaOXA_235_like = [ ]
+    blaOXA_23_like = [ "23", "54", "162", "181", "199", "204", "232", "244", "245", "247", "252", "370", "416", "436", "438", "439", "484", "505", "514", "515", "517", "519", "535", "538", "546", "547", "566", "567", \
+    "731", "788", "793", "833", "894", "918", "920", "922", "923", "924", "929", "933", "934", "1038", "1039", "1055", "1119", "1146", "1167","1181","1200","1201","1205","1207","1211","1212","1213" ]
+    blaOXA_24_40_like = [ "24","40","25","26","72","139","160","207","437","653", "897","1040","1081" ]
+    blaOXA_58_like = [ "58", "96","97","164","397","420","512","1178" ]
+    blaOXA_143_like = [ "143","182","231","253","255","499","649","825","945","1139","1182" ]
+    blaOXA_235_like = [ "134","235","236","237","276","278","282","283","284","285","335","360","361","362","363","496","537","646","647","648","915","991","1005","1110","1111","1112","1116" ]
     # combine lists of all genes we want to highlight
-    #all_big5_keep = big5_keep + blaOXA_48_like
+    blaOXAs = [f"{num}" for num in blaOXA_48_like + blaOXA_23_like + blaOXA_24_40_like + blaOXA_58_like + blaOXA_143_like + blaOXA_235_like]
     # remove list of genes that look like big 5 but don't have activity
-    big5_drop = [ "blaKPC-62", "blaKPC-63", "blaKPC-64", "blaKPC-65", "blaKPC-66", "blaKPC-72", "blaKPC-73", "blaOXA-163", "blaOXA-405"]
+    big5_drop = [ "blaKPC-62", "blaKPC-63", "blaKPC-64", "blaKPC-65", "blaKPC-66", "blaKPC-72", "blaKPC-73", "163", "405"]
     # loop through column names and check if they contain a gene we want highlighted. Then add to highlight list if they do. 
     for gene in all_genes: # loop through each gene in the dataframe of genes found in all isolates
         if gene == 'No_AR_Genes_Found':
@@ -1108,9 +1233,9 @@ def big5_check(final_ar_df):
         else:
             gene_name = gene.split('_(')[0] # remove drug name for matching genes
             drug = gene.split('_(')[1] # keep drug name to add back later
-            # make sure we have a complete match for blaOXA-48 and blaOXA-48-like genes
+            # make sure we have a complete match for 48 and 48-like genes
             if gene_name.startswith("blaOXA"): #check for complete blaOXA match
-                [ columns_to_highlight.append(gene_name + "_(" + drug) for big5_keep_gene in blaOXA_48_like if gene_name == big5_keep_gene ]
+                [ columns_to_highlight.append(gene_name + "_(" + drug) for big5_keep_gene in blaOXAs if gene_name == big5_keep_gene ]
             else: # for "blaIMP", "blaVIM", "blaNDM", and "blaKPC", this will take any thing with a matching substring to these
                 for big5 in big5_keep:
                     if search(big5, gene_name): #search for big5 gene substring in the gene name
@@ -1164,10 +1289,10 @@ def Combine_dfs(df, ar_df, pf_df, hv_df, srst2_ar_df, phoenix):
     pf_db = ",".join(pf_db)
     return final_df, ar_max_col, columns_to_highlight, final_ar_df, pf_db, ar_db, hv_db
 
-def write_to_excel(set_coverage, output, df, qc_max_col, ar_gene_count, pf_gene_count, hv_gene_count, columns_to_highlight, ar_df, pf_db, ar_db, hv_db, phoenix):
+def write_to_excel(set_coverage, output, df, qc_max_col, ar_gene_count, pf_gene_count, hv_gene_count, columns_to_highlight, ar_df, pf_db, ar_db, hv_db, phoenix, shigapass):
     # Create a Pandas Excel writer using XlsxWriter as the engine.
     if output != "":
-        writer = pd.ExcelWriter((output + '_GRiPHin_Summary.xlsx'), engine='xlsxwriter')
+        writer = pd.ExcelWriter((output + '.xlsx'), engine='xlsxwriter')
     else:
         writer = pd.ExcelWriter(('GRiPHin_Summary.xlsx'), engine='xlsxwriter')
     # Convert the dataframe to an XlsxWriter Excel object.
@@ -1221,19 +1346,31 @@ def write_to_excel(set_coverage, output, df, qc_max_col, ar_gene_count, pf_gene_
     cell_format_grey = workbook.add_format({'bg_color': '#AEB6BF', 'font_color': '#000000', 'bold': True})
     cell_format_darkgrey = workbook.add_format({'bg_color': '#808B96', 'font_color': '#000000', 'bold': True})
     # Headers
-    #worksheet.set_column('', "PHoeNIx Summary", cell_format_light_blue)
-    #worksheet.write('A1', "PHoeNIx Summary") #use for only 1 column in length
     #worksheet.set_column('A1:A1', None, cell_format_light_blue) #make summary column blue, #use for only 1 column in length
     worksheet.merge_range('A1:C1', "PHoeNIx Summary", cell_format_light_blue)
     worksheet.merge_range('D1:R1', "QC Metrics", cell_format_grey_blue)
+    #taxa columns 
     if phoenix == True: #for non-CDC entry points
-        worksheet.merge_range('S1:Y1', "Taxonomic Information", cell_format_green)
-    else:
-        worksheet.merge_range('S1:AA1', "Taxonomic Information", cell_format_green)
+        if shigapass == True:
+            worksheet.merge_range('S1:AA1', "Taxonomic Information", cell_format_green)#
+        else:
+            worksheet.merge_range('S1:Z1', "Taxonomic Information", cell_format_green)
+    else: # for CDC entry points
+        if shigapass == True:
+            worksheet.merge_range('S1:AC1', "Taxonomic Information", cell_format_green)
+        else:
+            worksheet.merge_range('S1:AB1', "Taxonomic Information", cell_format_green)
+    #MLST columns 
     if phoenix == True: #for non-CDC entry points
-        worksheet.merge_range('Z1:AG1', "MLST Schemes", cell_format_green_blue)
+        if shigapass == True:
+            worksheet.merge_range('AB1:AI1', "MLST Schemes", cell_format_green_blue)#
+        else:
+            worksheet.merge_range('AA1:AH1', "MLST Schemes", cell_format_green_blue)
     else:
-        worksheet.merge_range('AB1:AI1', "MLST Schemes", cell_format_green_blue)
+        if shigapass == True:
+            worksheet.merge_range('AD1:AK1', "MLST Schemes", cell_format_green_blue)
+        else:
+            worksheet.merge_range('AC1:AJ1', "MLST Schemes", cell_format_green_blue)
     worksheet.merge_range(0, qc_max_col, 0, (qc_max_col + ar_gene_count - 1), "Antibiotic Resistance Genes", cell_format_lightgrey)
     worksheet.merge_range(0, (qc_max_col + ar_gene_count), 0 ,(qc_max_col + ar_gene_count + hv_gene_count - 1), "Hypervirulence Genes^^", cell_format_grey)
     worksheet.merge_range(0, (qc_max_col + ar_gene_count + hv_gene_count), 0, (qc_max_col + ar_gene_count + pf_gene_count + hv_gene_count - 1), "Plasmid Incompatibility Replicons^^^", cell_format_darkgrey)
@@ -1272,7 +1409,7 @@ def write_to_excel(set_coverage, output, df, qc_max_col, ar_gene_count, pf_gene_
     ##    column_count = column_count + 1
     # Creating footers
     worksheet.write('A' + str(max_row + 4), 'Cells in YELLOW denote isolates outside of ' + str(set_coverage) + '-100X coverage', yellow_format)
-    worksheet.write('A' + str(max_row + 5), 'Cells in ORANGE denote “Big 5” carbapenemase gene (i.e., blaKPC, blaNDM, blaOXA-48-like, blaVIM, and blaIMP) or an acquired blaOXA gene, please confirm what AR Lab Network HAI/AR WGS priority these meet.', orange_format_nb)
+    worksheet.write('A' + str(max_row + 5), 'Cells in ORANGE denote “Big 5” carbapenemase gene (i.e., blaKPC, blaNDM, 48-like, blaVIM, and blaIMP) or an acquired blaOXA gene, please confirm what AR Lab Network HAI/AR WGS priority these meet.', orange_format_nb)
     worksheet.write('A' + str(max_row + 6), 'Cells in RED denote isolates that failed one or more auto failure triggers (cov < 30, assembly ratio stdev > 2.58, assembly length < 1Mbps)', red_format)
     # More footers - Disclaimer etc.
     # unbold
@@ -1287,7 +1424,7 @@ def write_to_excel(set_coverage, output, df, qc_max_col, ar_gene_count, pf_gene_
     # add autofilter
     worksheet.autofilter(1, 0, max_row, max_col - 1)
     # Close the Pandas Excel writer and output the Excel file.
-    writer.save()
+    writer.close()
 
 def blind_samples(final_df, control_file):
     """If you passed a file to -c this will swap out sample names to 'blind' the WGS_IDs in the final excel file."""
@@ -1338,12 +1475,12 @@ def sort_samplesheet(samplesheet):
         samples_sorted=sorted(samples)
     df = df.set_index("sample")
     df = df.loc[samples_sorted]
-    df.to_csv("Directory_samplesheet.csv", sep=',', encoding='utf-8') #overwrite file
+    df.to_csv(samplesheet, sep=',', encoding='utf-8') #overwrite file
 
 def convert_excel_to_tsv(output):
     '''Reads in the xlsx file that was just created, outputs as tsv version with first layer of headers removed'''
     if output != "":
-        output_file = output + '_GRiPHin_Summary'
+        output_file = output
     else:
         output_file = 'GRiPHin_Summary'
     #Read excel file into a dataframe
@@ -1364,6 +1501,8 @@ def main():
     pf_df = pd.DataFrame() #create another empty dataframe to fill later for Plasmid markers
     hv_df = pd.DataFrame() #create another empty dataframe to fill later for hypervirulence genes
     srst2_ar_df = pd.DataFrame()
+    shiga_df = pd.DataFrame()
+    centar_dfs = []
     # Since srst2 currently doesn't handle () in the gene names we will make a quick detour to fix this... first making a dictionary
     ar_dic = make_ar_dictionary(args.ar_db)
     # check if a directory or samplesheet was given
@@ -1374,9 +1513,7 @@ def main():
         samplesheet = create_samplesheet(args.directory)
     else:
         sort_samplesheet(args.samplesheet)
-        #rename samplesheet to make sure it works. 
-        os.rename(args.samplesheet, "Directory_samplesheet.csv")
-        samplesheet = "Directory_samplesheet.csv"
+        samplesheet = args.samplesheet
     #input is a samplesheet that is "samplename,directory" where the directory is a phoenix like folder
     with open(samplesheet) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
@@ -1384,6 +1521,12 @@ def main():
         for row in csv_reader:
             sample_name = row[0]
             directory = row[1]
+            # check if species specific information is present
+            if args.shigapass == True:
+                shiga_df = species_specific_griphin.create_shiga_df(directory, sample_name, shiga_df)
+            if args.centar == True:
+                    centar_df = create_centar_combined_df(directory, sample_name)
+                    centar_dfs.append(centar_df)
             data_location, parent_folder = Get_Parent_Folder(directory)
             trim_stats, raw_stats, kraken_trim, kraken_trim_report, kraken_wtasmbld_report, kraken_wtasmbld, quast_report, mlst_file, fairy_file, busco_short_summary, asmbld_ratio, gc, gamma_ar_file, gamma_pf_file, gamma_hv_file, fast_ani_file, tax_file, srst2_file = Get_Files(directory, sample_name)
             #Get the metrics for the sample
@@ -1399,6 +1542,13 @@ def main():
     # combine all lists into a dataframe
     df = Create_df(args.phoenix, data_location_L, parent_folder_L, Sample_Names, Q30_R1_per_L, Q30_R2_per_L, Total_Raw_Seq_bp_L, Total_Seq_reads_L, Paired_Trimmed_reads_L, Total_trim_Seq_reads_L, Trim_kraken_L, Asmbld_kraken_L, Coverage_L, Assembly_Length_L, Species_Support_L, fastani_organism_L, fastani_ID_L, fastani_coverage_L, warnings_L, alerts_L, \
     Scaffold_Count_L, busco_lineage_L, percent_busco_L, gc_L, assembly_ratio_L, assembly_stdev_L, tax_method_L, QC_result_L, QC_reason_L, MLST_scheme_1_L, MLST_scheme_2_L, MLST_type_1_L, MLST_type_2_L, MLST_alleles_1_L , MLST_alleles_2_L, MLST_source_1_L, MLST_source_2_L)
+    if args.shigapass == True:
+        df = double_check_taxa_id(shiga_df, df)
+    else:
+        df['Final_Taxa_ID'] = df.apply(fill_taxa_id, axis=1)
+    if args.centar == True:
+        full_centar_df = pd.concat(centar_dfs, ignore_index=True)
+        ordered_centar_df = clean_and_format_centar_dfs(full_centar_df)
     (qc_max_row, qc_max_col) = df.shape
     pf_max_col = pf_df.shape[1] - 1 #remove one for the WGS_ID column
     hv_max_col = hv_df.shape[1] - 1 #remove one for the WGS_ID column
@@ -1408,9 +1558,8 @@ def main():
         final_df = blind_samples(final_df, args.control_list)
     else:
         final_df = final_df
-    write_to_excel(args.set_coverage, args.output, final_df, qc_max_col, ar_max_col, pf_max_col, hv_max_col, columns_to_highlight, final_ar_df, pf_db, ar_db, hv_db, args.phoenix)
+    write_to_excel(args.set_coverage, args.output, final_df, qc_max_col, ar_max_col, pf_max_col, hv_max_col, columns_to_highlight, final_ar_df, pf_db, ar_db, hv_db, args.phoenix, args.shigapass)
     convert_excel_to_tsv(args.output)
-
 
 if __name__ == '__main__':
     main()

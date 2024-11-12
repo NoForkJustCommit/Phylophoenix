@@ -33,19 +33,24 @@ include { GRIPHIN_WORKFLOW             } from '../subworkflows/local/griphin_wor
 include { GET_COMPARISONS              } from '../modules/local/create_comparisons'
 include { MASH_DIST    as MASH_DIST    } from '../modules/local/mash_distance'
 include { GET_CENTROID as GET_CENTROID } from '../modules/local/get_centroid'
-include { ASSET_CHECK  as ASSET_CHECK  } from '../modules/local/asset_check'
+include { ASSET_PREP   as ASSET_PREP   } from '../modules/local/asset_prep'
 include { CREATE_META  as CREATE_META  } from '../subworkflows/local/create_meta'
 include { SNVPHYL                      } from '../subworkflows/local/snvphyl'
+include { RENAME_REF_IN_OUTPUT         } from '../modules/local/rename_ref_in_output'
+include { CLEAN_AND_CREATE_METADATA    } from '../modules/local/clean_and_create_metadata'
+include { COMBINE_GRIPHIN_SNVPHYL      } from '../modules/local/combine_griphin_snvphyl'
 
 //
 // Modules for running snvphyl by st
 //
-include { GET_SEQUENCE_TYPES                 } from '../modules/local/get_sequence_types'
-include { CREATE_META  as CREATE_META_BY_ST  } from '../subworkflows/local/create_meta'
-include { MASH_DIST    as MASH_DIST_BY_ST    } from '../modules/local/mash_distance'
-include { GET_CENTROID as GET_CENTROID_BY_ST } from '../modules/local/get_centroid'
-include { ASSET_CHECK  as ASSET_CHECK_BY_ST  } from '../modules/local/asset_check'
-include { SNVPHYL      as SNVPHYL_BY_ST      } from '../subworkflows/local/snvphyl'
+include { GET_SEQUENCE_TYPES                                           } from '../modules/local/get_sequence_types'
+include { CREATE_META               as CREATE_META_BY_ST               } from '../subworkflows/local/create_meta'
+include { MASH_DIST                 as MASH_DIST_BY_ST                 } from '../modules/local/mash_distance'
+include { GET_CENTROID              as GET_CENTROID_BY_ST              } from '../modules/local/get_centroid'
+include { ASSET_PREP                as ASSET_PREP_BY_ST                } from '../modules/local/asset_prep'
+include { SNVPHYL                   as SNVPHYL_BY_ST                   } from '../subworkflows/local/snvphyl'
+include { RENAME_REF_IN_OUTPUT      as RENAME_REF_IN_OUTPUT_BY_ST      } from '../modules/local/rename_ref_in_output'
+include { CLEAN_AND_CREATE_METADATA as CLEAN_AND_CREATE_METADATA_BY_ST } from '../modules/local/clean_and_create_metadata'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -72,20 +77,24 @@ include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoft
 workflow PHYLOPHOENIX {
     take:
         input_samplesheet_path
-        input_dir
+        indir
 
     main:
         ch_versions = Channel.empty()
-        // If you pass --no_all then samples will not be rull all together
-        //if (params.no_all==false) {
+
+        // get geonames file into a channel. Coding it this way and not params so we can use a glob and not be verbose.
+        geonames_ch = Channel.fromPath("${baseDir}/assets/databases/*_geolocation.txt.xz").collect()
+
+        // Create report
+        GRIPHIN_WORKFLOW (
+            input_samplesheet_path, indir
+        )
+        ch_versions = ch_versions.mix(GRIPHIN_WORKFLOW.out.versions)
+
+        // If you pass --no_all then samples will not be run all together
+        if (params.no_all==false) {
             // Allow outdir to be relative
             //outdir_path = Channel.fromPath(params.outdir, relative: true, type: 'dir')
-
-            // Create report
-            GRIPHIN_WORKFLOW (
-                input_samplesheet_path, input_dir
-            )
-            ch_versions = ch_versions.mix(GRIPHIN_WORKFLOW.out.versions)
 
             // Creates samplesheets with sampleid,seq_type,path_to_assembly
             GET_COMPARISONS (
@@ -93,10 +102,19 @@ workflow PHYLOPHOENIX {
             )
             ch_versions = ch_versions.mix(GET_COMPARISONS.out.versions)
 
-            // creates channel: [ val(meta.id, meta.st), [ scaffolds_1, scaffolds_2 ] ]
-            CREATE_META (
-                GET_COMPARISONS.out.samplesheet, GET_COMPARISONS.out.snv_samplesheet
-            )
+            if (params.metadata!=null) {
+                // get metadata into channel
+                metadata  = Channel.fromPath(params.metadata, relative: true)
+                // creates channel: [ val(meta.id, meta.st), [ scaffolds_1, scaffolds_2 ] ]
+                CREATE_META (
+                    GET_COMPARISONS.out.samplesheet, GET_COMPARISONS.out.snv_samplesheet, metadata, false
+                )
+            } else {
+                // creates channel: [ val(meta.id, meta.st), [ scaffolds_1, scaffolds_2 ] ]
+                CREATE_META (
+                    GET_COMPARISONS.out.samplesheet, GET_COMPARISONS.out.snv_samplesheet, null, false
+                )
+            }
 
             // Run Mash on groups of samples by seq type
             MASH_DIST (
@@ -120,36 +138,62 @@ workflow PHYLOPHOENIX {
             ch_versions = ch_versions.mix(GET_CENTROID.out.versions)
 
             // Unzip centroid assembly: SNVPhyl requires it unzipped
-            ASSET_CHECK(
-                GET_CENTROID.out.centroid_path.splitCsv( header:false, sep:',' ) // Bring in centroid into channel
+            // also unzip the geoname files for cleaning metadata file. 
+            ASSET_PREP (
+                // Bring in centroid into channel
+                GET_CENTROID.out.centroid_path.splitCsv( header:false, sep:',' ), geonames_ch, CREATE_META.out.st_snv_samplesheets
             )
-            ch_versions = ch_versions.mix(ASSET_CHECK.out.versions)
+            ch_versions = ch_versions.mix(ASSET_PREP.out.versions)
 
-            ASSET_CHECK.out.unzipped_fasta.view()
+            // Check and correct the metadata file if it was passed
+            if (params.metadata!=null) {
+                CLEAN_AND_CREATE_METADATA (
+                    CREATE_META.out.split_metadata, GRIPHIN_WORKFLOW.out.griphin_tsv_report, ASSET_PREP.out.unzipped_geodata
+                )
+                ch_versions = ch_versions.mix(CLEAN_AND_CREATE_METADATA.out.versions)
+            }
 
             // Make SNVPHYL channel by joining by seq type
-            all_ch = CREATE_META.out.st_snv_samplesheets.join(ASSET_CHECK.out.unzipped_fasta, by: [0])
+            all_ch = ASSET_PREP.out.st_snv_samplesheets.join(ASSET_PREP.out.unzipped_fasta, by: [0])
 
             // Run snvphyl on each st type on its own input
             SNVPHYL (
                 all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, samplesheet]}, all_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, unzipped_fasta] } // reference
             )
             ch_versions = ch_versions.mix(SNVPHYL.out.versions)
-        //}
+
+            final_output_ch = GET_CENTROID.out.centroid_info.join(SNVPHYL.out.phylogeneticTree, by: [0]).join(SNVPHYL.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA.out.updated_samplesheet, by: [0])
+
+            // Rename reference to actual sample name
+            RENAME_REF_IN_OUTPUT (
+                final_output_ch
+            )
+            ch_versions = ch_versions.mix(RENAME_REF_IN_OUTPUT.out.versions)
+        }
 
         // If you pass --by_st then samples will be broken up by st type and SNVPhyl run on each st on its own
         if (params.by_st==true) {
 
-            // Creates samplesheets with sampleid,seq_type,path_to_assembly
+            // Creates samplesheets with sample,seq_type,path_to_assembly
             GET_SEQUENCE_TYPES (
                 GRIPHIN_WORKFLOW.out.directory_samplesheet, GRIPHIN_WORKFLOW.out.griphin_report
             )
             ch_versions = ch_versions.mix(GET_SEQUENCE_TYPES.out.versions)
 
-            // creates channel: [ val(meta.id, meta.st), [ scaffolds_1, scaffolds_2 ] ]
-            CREATE_META_BY_ST (
-                GET_SEQUENCE_TYPES.out.st_samplesheets, GET_SEQUENCE_TYPES.out.st_snv_samplesheets
-            )
+            if (params.metadata!=null) {
+                // get metadata into channel
+                metadata  = Channel.fromPath(params.metadata, relative: true)
+
+                // creates channel: [ val(meta.id, meta.st), [ scaffolds_1, scaffolds_2 ] ]
+                CREATE_META_BY_ST (
+                    GET_SEQUENCE_TYPES.out.st_samplesheets, GET_SEQUENCE_TYPES.out.st_snv_samplesheets, metadata, true
+                )
+            } else {
+                // creates channel: [ val(meta.id, meta.st), [ scaffolds_1, scaffolds_2 ] ]
+                CREATE_META_BY_ST (
+                    GET_SEQUENCE_TYPES.out.st_samplesheets, GET_SEQUENCE_TYPES.out.st_snv_samplesheets, [], false
+                )
+            }
 
             // Run Mash on groups of samples by seq type
             MASH_DIST_BY_ST (
@@ -178,13 +222,24 @@ workflow PHYLOPHOENIX {
             ch_versions = ch_versions.mix(GET_CENTROID_BY_ST.out.versions)
 
             // Unzip centroid assembly: SNVPhyl requires it unzipped
-            ASSET_CHECK_BY_ST(
-                GET_CENTROID_BY_ST.out.centroid_path.splitCsv( header:false, sep:',' ) // Bring in centroid into channel
+            ASSET_PREP_BY_ST (
+                GET_CENTROID_BY_ST.out.centroid_path.splitCsv( header:false, sep:',' ), // Bring in centroid into channel
+                geonames_ch,
+                CREATE_META_BY_ST.out.st_snv_samplesheets
             )
+            ch_versions = ch_versions.mix(ASSET_PREP_BY_ST.out.versions)
+
+            // Check and correct the metadata file
+            if (params.metadata!=null) {
+                // clean up metadata file, add geolocation information
+                CLEAN_AND_CREATE_METADATA_BY_ST (
+                    CREATE_META_BY_ST.out.split_metadata, GRIPHIN_WORKFLOW.out.griphin_tsv_report, ASSET_PREP.out.unzipped_geodata
+                )
+                ch_versions = ch_versions.mix(CLEAN_AND_CREATE_METADATA_BY_ST.out.versions)
+            }
 
             // Make SNVPHYL channel by joining by seq type
-            st_ch = CREATE_META_BY_ST.out.st_snv_samplesheets.join(ASSET_CHECK_BY_ST.out.unzipped_fasta, by: [0])
-            //CREATE_META_BY_ST.out.st_snv_samplesheets.view()
+            st_ch = CREATE_META_BY_ST.out.st_snv_samplesheets.join(ASSET_PREP_BY_ST.out.unzipped_fasta, by: [0])
 
             // Run snvphyl on each st type on its own input
             SNVPHYL_BY_ST (
@@ -192,7 +247,30 @@ workflow PHYLOPHOENIX {
                 st_ch.map{ seq_type, samplesheet, unzipped_fasta -> [seq_type, unzipped_fasta] } // reference
             )
             ch_versions = ch_versions.mix(SNVPHYL_BY_ST.out.versions)
+
+            final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA_BY_ST.out.updated_samplesheet, by: [0])
+
+            // Rename reference to actual sample name
+            RENAME_REF_IN_OUTPUT_BY_ST (
+                final_st_output_by_st_ch
+            )
+            ch_versions = ch_versions.mix(RENAME_REF_IN_OUTPUT_BY_ST.out.versions)
         }
+
+        if (params.by_st==true) {
+            // collect files to add to griphin summary
+            snvMatrix_ch = RENAME_REF_IN_OUTPUT.out.snvMatrix.collect().combine(RENAME_REF_IN_OUTPUT_BY_ST.out.snvMatrix.collect())
+            vcf2core_ch = SNVPHYL.out.vcf2core.map{ meta, vcf2core -> vcf2core }.collect().combine(SNVPHYL_BY_ST.out.vcf2core.map{ meta, vcf2core -> vcf2core }.collect())
+        } else {
+            // collect files to add to griphin summary
+            snvMatrix_ch = RENAME_REF_IN_OUTPUT.out.snvMatrix
+            vcf2core_ch = SNVPHYL.out.vcf2core.map{ meta, vcf2core -> vcf2core }
+        }
+
+        COMBINE_GRIPHIN_SNVPHYL (
+            snvMatrix_ch, vcf2core_ch, GRIPHIN_WORKFLOW.out.griphin_report
+        )
+        ch_versions = ch_versions.mix(COMBINE_GRIPHIN_SNVPHYL.out.versions)
 
         CUSTOM_DUMPSOFTWAREVERSIONS (
             ch_versions.unique().collectFile(name: 'collated_versions.yml')

@@ -7,9 +7,9 @@ process GET_SEQUENCE_TYPES {
     path(griphin_report) // -g
 
     output:
-    path("ST*_samplesheet.csv"),         emit: st_samplesheets     // headers: id,seq_type,assembly_1,assembly_2
-    path("SNVPhyl_ST*_samplesheet.csv"), emit: st_snv_samplesheets // headers: id,directory
-    path("versions.yml"),                emit: versions
+    path("ST*_samplesheet.csv"),             emit: st_samplesheets     // headers: id,seq_type,assembly_1,assembly_2
+    path("SNVPhyl_ST*_samplesheet_pre.csv"), emit: st_snv_samplesheets // headers: id,directory
+    path("versions.yml"),                    emit: versions
 
     script: // This script is bundled with the pipeline, in dhqp/griphin/bin/
     // Adding if/else for if running on ICA it is a requirement to state where the script is, however, this causes CLI users to not run the pipeline from any directory.

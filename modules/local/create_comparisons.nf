@@ -6,9 +6,9 @@ process GET_COMPARISONS {
     path(griphin_samplesheet) // -s
 
     output:
-    path("All_STs_samplesheet.csv"),         emit: samplesheet     // headers: id,seq_type,assembly_1,assembly_2
-    path("SNVPhyl_All_STs_samplesheet.csv"), emit: snv_samplesheet // headers: id,directory
-    path("versions.yml"),                    emit: versions
+    path("All_STs_samplesheet.csv"),             emit: samplesheet     // headers: id,seq_type,assembly_1,assembly_2
+    path("SNVPhyl_All_STs_samplesheet_pre.csv"), emit: snv_samplesheet // headers: id,directory
+    path("versions.yml"),                        emit: versions
 
     script: // This script is bundled with the pipeline, in dhqp/griphin/bin/
     // Adding if/else for if running on ICA it is a requirement to state where the script is, however, this causes CLI users to not run the pipeline from any directory.

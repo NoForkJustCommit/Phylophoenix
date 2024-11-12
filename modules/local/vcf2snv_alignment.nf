@@ -12,23 +12,23 @@ process VCF2SNV_ALIGNMENT {
     tuple val(meta), path(consolidated_bcf_index)
 
     output:
-    tuple val(meta), path('snvAlignment.phy'), emit: snvAlignment
-    tuple val(meta), path('vcf2core.tsv'),     emit: vcf2core
-    tuple val(meta), path('snvTable.tsv'),     emit: snvTable
-    path("versions.yml"),                      emit: versions
+    tuple val(meta), path("${meta.seq_type}_snvAlignment.phy"), emit: snvAlignment
+    tuple val(meta), path("${meta.seq_type}_vcf2core.tsv"),     emit: vcf2core
+    tuple val(meta), path("${meta.seq_type}_snvTable.tsv"),     emit: snvTable
+    path("versions.yml"),                                       emit: versions
 
     script:
     def container = task.container.toString() - "staphb/snvphyl-tools:"
     """
     vcf2snv_alignment.pl --reference reference --invalid-pos ${new_invalid_positions} --format fasta --format phylip --numcpus 4 --output-base snvalign --fasta ${refgenome} ${consolidate_bcfs} 
-    mv snvalign-positions.tsv snvTable.tsv
-    mv snvalign-stats.csv vcf2core.tsv
+    mv snvalign-positions.tsv ${meta.seq_type}_snvTable.tsv
+    mv snvalign-stats.csv ${meta.seq_type}_vcf2core.tsv
     if [[ -f snvalign.phy ]]; then
-        mv snvalign.phy snvAlignment.phy
-        sed -i "s/'//" snvAlignment.phy
-        sed -i "s/'//" snvAlignment.phy
+        mv snvalign.phy ${meta.seq_type}_snvAlignment.phy
+        sed -i "s/'//" ${meta.seq_type}_snvAlignment.phy
+        sed -i "s/'//" ${meta.seq_type}_snvAlignment.phy
     else
-        touch snvAlignment.phy
+        touch ${meta.seq_type}_snvAlignment.phy
     fi
 
     cat <<-END_VERSIONS > versions.yml

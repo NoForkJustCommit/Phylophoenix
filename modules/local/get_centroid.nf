@@ -9,6 +9,7 @@ process GET_CENTROID {
 
     output:
     tuple val(meta), path("path_to_${meta.seq_type}_centroid.csv"), emit: centroid_path
+    tuple val(meta), path("${meta.seq_type}_centroid_info.txt"),    emit: centroid_info
     path("versions.yml"),                                           emit: versions
 
     script: // This script is bundled with the pipeline, in dhqp/griphin/bin/

@@ -75,6 +75,7 @@ workflow GRIPHIN_WORKFLOW {
 
     emit:
         griphin_report        = GRIPHIN.out.griphin_report
+        griphin_tsv_report    = GRIPHIN.out.griphin_tsv_report  
         directory_samplesheet = REMOVE_FAILURES.out.cleaned_dir_samplesheet
         versions              = ch_versions // channel: [ versions.yml ]
 }

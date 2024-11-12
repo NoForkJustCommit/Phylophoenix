@@ -5,14 +5,17 @@ import argparse
 import csv
 import glob
 
-##Makes a new samplesheet for assemblies based on their st type. Expects that assemblies are in an output PHoeNIx folder
-##Usage: >python get_st_types.py -s GRiPHin_samplesheet.csv -g GRiPHin_Report.xlsx
 ## Written by Jill Hagey (qpk9@cdc.gov)
+
+# Function to get the script version
+def get_version():
+    return "1.0.0"
 
 def parseArgs(args=None):
     parser = argparse.ArgumentParser(description='Script to generate a PhoeNix summary excel sheet.')
     parser.add_argument('-s', '--samplesheet', default=None, required=False, dest='samplesheet', help='GRiPHin samplesheet of sample,directory in csv format.')
     parser.add_argument('-g', '--griphin_report', required=False, dest='griphin_report', help='A griphin excel report.')
+    parser.add_argument('--version', action='version', version=get_version())# Add an argument to display the version
     return parser.parse_args()
 
 def get_st_groups(griphin_report):
@@ -39,19 +42,19 @@ def create_sample_sheets(st_dict, samplesheet):
     complete_list = []
     for seq_type, sample_list in st_dict.items():
         list_of_samples_by_st = []
-        with open("SNVPhyl_" + seq_type +"_samplesheet.csv", "a") as st_snv_samplesheet: # create a new sample sheet for each ST that can be used by snvphyl
-            st_snv_samplesheet.write('id,directory') #write the header
+        with open("SNVPhyl_" + seq_type +"_samplesheet_pre.csv", "a") as st_snv_samplesheet: # create a new sample sheet for each ST that can be used by snvphyl
+            st_snv_samplesheet.write('sample,directory') #write the header
         for sample in sample_list: # for each sample that is part of the ST
             with open(samplesheet, 'r') as f: # read the orginal griphin samplesheet
                 for line in f:
                     if sample in line:
-                        with open("SNVPhyl_" + seq_type +"_samplesheet.csv", "a") as st_snv_samplesheet: # this create a file with headers
+                        with open("SNVPhyl_" + seq_type +"_samplesheet_pre.csv", "a") as st_snv_samplesheet: # this create a file with headers
                             st_snv_samplesheet.write("\n" + line.strip('\n'))
                         assembly = line.split(',')[1].strip() + "/assembly/" + sample + ".filtered.scaffolds.fa.gz"
                         list_of_samples_by_st.append(assembly)
                         complete_list.append(assembly)
         with open(seq_type +"_samplesheet.csv", 'w') as new_samplesheet: # create a new sample sheet for each ST
-            new_samplesheet.write("id,seq_type,assembly_1,assembly_2") #write the header
+            new_samplesheet.write("sample,seq_type,assembly_1,assembly_2") #write the header
             seq_type_combinations = [(a, b) for idx, a in enumerate(list_of_samples_by_st) for b in list_of_samples_by_st[idx + 1:]]
             for combo in seq_type_combinations:
                 sample1 = combo[0].split('/')[-1].replace(".filtered.scaffolds.fa.gz","")

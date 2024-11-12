@@ -9,6 +9,7 @@ process GRIPHIN {
     path(control_list) // -c
     val(coverage)
     val(entry)
+    //val(shigapass_detected)
 
     output:
     path("*_Summary.xlsx"),            emit: griphin_report
@@ -32,7 +33,6 @@ process GRIPHIN {
     // get container info
     def container     = task.container.toString() - "quay.io/jvhagey/phoenix:"
     """
-
     ${ica}GRiPHin.py --ar_db ${db} --coverage ${coverage} ${samplesheet} ${controls} ${phoenix} ${report_prefix}
 
     cat <<-END_VERSIONS > versions.yml
