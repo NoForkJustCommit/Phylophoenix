@@ -9,8 +9,6 @@ process SORT_INDEX_BAMS {
 
     output:
     tuple val(meta), path( "${meta.id}_sorted.bam" ), emit: sorted_bams
-    //tuple val(meta), path( "${meta.id}_sorted.bam" ), emit: sorted_bams_and_sampleID
-    //path( "${meta.id}_sorted.bam" ),                  emit: sorted_bams
     path("versions.yml"),                             emit: versions
 
     script:

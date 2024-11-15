@@ -45,8 +45,9 @@ workflow CREATE_META {
                 // when ALL_STs are running through don't split then just pass it and move along
                 split_metadata = metadata.map{ it -> add_meta(it) }
             }
-        } 
-        //split_metadata.view()
+        } else {
+            split_metadata = []
+        }
 
     emit:
         st_scaffolds        = st_scaffolds   // channel: [ val(meta), [ scaffolds_1, scaffolds_2 ] ]

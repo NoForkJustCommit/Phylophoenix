@@ -15,6 +15,7 @@ process PHYML {
 
     script:
     """
+
     phyml -i ${snvAlignment_phy} --datatype nt --model GTR -v 0.0 -s BEST --ts/tv e --nclasses 4 --alpha e --bootstrap -4 --quiet
     mv ${meta.seq_type}_snvAlignment.phy_phyml_stats.txt phylogeneticTreeStats.txt
     mv ${meta.seq_type}_snvAlignment.phy_phyml_tree.txt phylogeneticTree_pre_${meta.seq_type}.newick

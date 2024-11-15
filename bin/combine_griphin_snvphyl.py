@@ -7,6 +7,7 @@ import pandas as pd
 import argparse
 import glob
 import os
+import re
 import xlsxwriter as ws
 from xlsxwriter.utility import xl_rowcol_to_cell
 import openpyxl

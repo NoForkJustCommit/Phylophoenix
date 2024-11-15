@@ -14,7 +14,7 @@ process CONVERT_INPUT {
 
     script:
     def samplesheet = sample_sheet ? "--samplesheet ${sample_sheet}" : ""
-    //def input_dir   = directory ? "--input_dir ${directory}" : ""
+    //def indir   = directory ? "--input_dir ${directory}" : ""
     //def report_prefix = prefix ? "--output ${prefix}" : ""
     // Adding if/else for if running on ICA it is a requirement to state where the script is, however, this causes CLI users to not run the pipeline from any directory.
     if (params.ica==false) {

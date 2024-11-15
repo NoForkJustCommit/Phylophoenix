@@ -42,26 +42,26 @@ workflow PHYLOPHOENIX_WF {
         // allow input to be relative, turn into string and strip off the everything after the last backslash to have remainder of as the full path to the samplesheet. 
         //input_samplesheet_path = Channel.fromPath(params.input, relative: true).map{ [it.toString().replaceAll(/([^\/]+$)/, "").replaceAll(/\/$/, "") ] }
         input_samplesheet_path = Channel.fromPath(params.input, relative: true)
-        if (params.input_dir != null ) { //if samplesheet is passed and an input directory exit
+        if (params.indir != null ) { //if samplesheet is passed and an input directory exit
             exit 1, 'You need EITHER an input samplesheet or a directory! Just pick one.' 
         } else { // if only samplesheet is passed check to make sure input is an actual file
-            input_dir = []
+            indir = []
             def checkPathParamList = [ params.input ]
             for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
         }
     } else { // if no samplesheet is passed
-        if (params.input_dir != null ) { // if no samplesheet is passed, but an input directory is given
+        if (params.indir != null ) { // if no samplesheet is passed, but an input directory is given
             input_samplesheet_path = []
-            def checkPathParamList = [ params.input_dir ]
+            def checkPathParamList = [ params.indir ]
             for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
-            input_dir = params.input_dir
+            indir = params.indir
         } else { // if no samplesheet is passed and no input directory is given
             exit 1, 'You need EITHER an input samplesheet or a directory!' 
         }
     }
 
     main:
-        PHYLOPHOENIX ( input_samplesheet_path, input_dir )
+        PHYLOPHOENIX ( input_samplesheet_path, indir )
 }
 
 /*

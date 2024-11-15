@@ -3,15 +3,19 @@
 import pandas as pd
 import argparse
 import csv
+import glob
 
-##Makes a new samplesheet for assemblies based on their st type. Expects that assemblies are in an output PHoeNIx folder
-##Usage: >python get_st_types.py -s GRiPHin_samplesheet.csv -g GRiPHin_Report.xlsx
 ## Written by Jill Hagey (qpk9@cdc.gov)
+
+# Function to get the script version
+def get_version():
+    return "1.0.0"
 
 def parseArgs(args=None):
     parser = argparse.ArgumentParser(description='Script to generate a PhoeNix summary excel sheet.')
     parser.add_argument('-s', '--samplesheet', default=None, required=False, dest='samplesheet', help='GRiPHin samplesheet of sample,directory in csv format.')
     parser.add_argument('-g', '--griphin_report', required=False, dest='griphin_report', help='A griphin excel report.')
+    parser.add_argument('--version', action='version', version=get_version())# Add an argument to display the version
     return parser.parse_args()
 
 def get_st_groups(griphin_report):
@@ -27,29 +31,50 @@ def get_st_groups(griphin_report):
     st_dict = {} #create an empty dictionary
     for seq_type in list_of_sts:
         sample_list = list(clean_df.loc[clean_df["Primary_MLST"] == seq_type, 'WGS_ID']) # get the sample names per ST type
-        if len(sample_list) > 1: # Do not include cases where the there is only one sample for a given ST type
+        if len(sample_list) > 3: # Do not include cases where the there 2 or less >3 sample for a given ST type
             st_dict[seq_type] = sample_list # add st type and its samples to a dictionary
         else:
-            pass
+            print(f'The following STs did not have enough isolates for analysis: {sample_list}')
     return st_dict
 
 def create_sample_sheets(st_dict, samplesheet):
-    """Create a samplesheet with the assemblies for each ST type."""
-    for key, sample_list in st_dict.items():
-        with open(key +"_samplesheet.csv", 'w') as new_samplesheet: # create a new sample sheet for each ST
-            new_samplesheet.write('sample,seq_type,assembly\n') #write the header
-            for sample in sample_list: # for each sample that is part of the ST
-                with open(samplesheet, 'r') as f: # read the orginal griphin samplesheet
-                    for line in f:
-                        if sample in line:
-                            sample = line.split(',')[0]
-                            assembly = line.split(',')[1].strip() + "/assembly/" + sample + ".filtered.scaffolds.fa.gz" + "\n"
-                            new_samplesheet.write(sample + "," + key + "," + assembly)
+    """Create a samplesheet with the assemblies for each Seq Type. Also, creates samplesheet to run SNVPhyl for each Seq Type."""
+    complete_list = []
+    for seq_type, sample_list in st_dict.items():
+        list_of_samples_by_st = []
+        with open("SNVPhyl_" + seq_type +"_samplesheet_pre.csv", "a") as st_snv_samplesheet: # create a new sample sheet for each ST that can be used by snvphyl
+            st_snv_samplesheet.write('sample,directory') #write the header
+        for sample in sample_list: # for each sample that is part of the ST
+            with open(samplesheet, 'r') as f: # read the orginal griphin samplesheet
+                for line in f:
+                    if sample in line:
+                        with open("SNVPhyl_" + seq_type +"_samplesheet_pre.csv", "a") as st_snv_samplesheet: # this create a file with headers
+                            st_snv_samplesheet.write("\n" + line.strip('\n'))
+                        assembly = line.split(',')[1].strip() + "/assembly/" + sample + ".filtered.scaffolds.fa.gz"
+                        list_of_samples_by_st.append(assembly)
+                        complete_list.append(assembly)
+        with open(seq_type +"_samplesheet.csv", 'w') as new_samplesheet: # create a new sample sheet for each ST
+            new_samplesheet.write("sample,seq_type,assembly_1,assembly_2") #write the header
+            seq_type_combinations = [(a, b) for idx, a in enumerate(list_of_samples_by_st) for b in list_of_samples_by_st[idx + 1:]]
+            for combo in seq_type_combinations:
+                sample1 = combo[0].split('/')[-1].replace(".filtered.scaffolds.fa.gz","")
+                sample2 = combo[1].split('/')[-1].replace(".filtered.scaffolds.fa.gz","")
+                new_samplesheet.write("\n" + sample1 + "_" + sample2 + "," + seq_type + "," + str(combo[0]) + "," + str(combo[1]))
+
+def combine_samplesheets():
+    files = glob.glob('ST*_samplesheet.csv')
+    with open("All_STs_samplesheet.csv" , "w") as new_file:
+        for f in files:
+            with open(f, 'r') as opened_files:
+                header = next(opened_files)
+                for line in opened_files:
+                    new_file.write(line)
 
 def main():
     args = parseArgs()
     st_dict = get_st_groups(args.griphin_report) # open the excel sheet get sample names organized by their ST types
     create_sample_sheets(st_dict, args.samplesheet) # go back to the samplesheet and keep only lines this matching samplenames
+    combine_samplesheets()
 
 if __name__ == '__main__':
     main()

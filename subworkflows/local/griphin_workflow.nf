@@ -9,7 +9,7 @@ include { REMOVE_FAILURES    } from '../../modules/local/remove_failures'
 workflow GRIPHIN_WORKFLOW {
     take:
         input_samplesheet_path // channel: tuple val(meta), path('*.json'): FASTP_TRIMD.out.json --> PHOENIX_EXQC.out.paired_trmd_json
-        input_dir
+        indir
 
     main:
         ch_versions = Channel.empty() // Used to collect the software versions
@@ -35,7 +35,7 @@ workflow GRIPHIN_WORKFLOW {
             directory_samplesheet = GRIPHIN.out.griphin_samplesheet
         } else { // if no samplesheet is passed the we will make one
             // allow input directory to be relative
-            inputdir_path = Channel.fromPath(input_dir, relative: true, type: 'dir') // this same path is needed to make the samplesheet
+            inputdir_path = Channel.fromPath(indir, relative: true, type: 'dir') // this same path is needed to make the samplesheet
 
             // Create samplesheet - while GRiPHin can create a samplesheet for you, due to nextflow/softlinks etc this results in failures at the create_meta step. 
             // so we are just using another process to create the samplesheet :)

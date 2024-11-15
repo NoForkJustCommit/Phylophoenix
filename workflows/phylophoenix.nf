@@ -141,7 +141,10 @@ workflow PHYLOPHOENIX {
             // also unzip the geoname files for cleaning metadata file. 
             ASSET_PREP (
                 // Bring in centroid into channel
-                GET_CENTROID.out.centroid_path.splitCsv( header:false, sep:',' ), geonames_ch, CREATE_META.out.st_snv_samplesheets
+                GET_CENTROID.out.centroid_path.splitCsv( header:false, sep:',' ).map{meta, list -> 
+                def scaffold = list[0] // extract the file from the list
+                return [meta, scaffold]},  // get into format [[meta], scaffold]
+                geonames_ch, CREATE_META.out.st_snv_samplesheets
             )
             ch_versions = ch_versions.mix(ASSET_PREP.out.versions)
 
@@ -162,7 +165,11 @@ workflow PHYLOPHOENIX {
             )
             ch_versions = ch_versions.mix(SNVPHYL.out.versions)
 
-            final_output_ch = GET_CENTROID.out.centroid_info.join(SNVPHYL.out.phylogeneticTree, by: [0]).join(SNVPHYL.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA.out.updated_samplesheet, by: [0])
+            if (params.metadata!=null) {
+                final_output_ch = GET_CENTROID.out.centroid_info.join(SNVPHYL.out.phylogeneticTree, by: [0]).join(SNVPHYL.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA.out.updated_samplesheet, by: [0])
+            } else {
+                final_output_ch = GET_CENTROID.out.centroid_info.join(SNVPHYL.out.phylogeneticTree, by: [0]).join(SNVPHYL.out.snvMatrix, by: [0]).combine([])
+            }
 
             // Rename reference to actual sample name
             RENAME_REF_IN_OUTPUT (
@@ -248,7 +255,11 @@ workflow PHYLOPHOENIX {
             )
             ch_versions = ch_versions.mix(SNVPHYL_BY_ST.out.versions)
 
-            final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA_BY_ST.out.updated_samplesheet, by: [0])
+            if (params.metadata!=null) {
+                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA_BY_ST.out.updated_samplesheet, by: [0])
+            } else {
+                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).combine([])
+            }
 
             // Rename reference to actual sample name
             RENAME_REF_IN_OUTPUT_BY_ST (

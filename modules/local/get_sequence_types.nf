@@ -22,7 +22,7 @@ process GET_SEQUENCE_TYPES {
     }
     def container = task.container.toString() - "quay.io/jvhagey/phoenix:"
     """
-    ${ica}get_st_types_new.py -g ${griphin_report} -s ${griphin_samplesheet}
+    ${ica}get_st_types.py -g ${griphin_report} -s ${griphin_samplesheet}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

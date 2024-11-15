@@ -5,8 +5,7 @@ process CONSOLIDATE_FILTERED_DENSITY {
     container 'quay.io/jvhagey/phoenix:base_v2.1.0'
 
     input:
-    tuple val(meta), path(filtered_densities)
-    tuple val(meta), path(invalid_positions)
+    tuple val(meta), path(filtered_densities), path(invalid_positions)
 
     output:
     tuple val(meta), path('filtered_density_all.txt'),  emit: filtered_densities

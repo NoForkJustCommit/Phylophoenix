@@ -5,9 +5,9 @@ process FREEBAYES {
     container "staphb/freebayes:1.3.6"
 
     input:
-    tuple val(meta), path(sorted_bams)
-    tuple val(meta_2), path(ref_fai), path(ref_sma), path(ref_smi)
-    tuple val(meta_3), path(ref_genome)
+    tuple val(meta), path(sorted_bams),
+    path(ref_fai), path(ref_sma), path(ref_smi), 
+    path(ref_genome)
 
     output:
     tuple val(meta), path( "${meta.id}_freebayes.vcf" ), emit: vcf_files
@@ -16,12 +16,6 @@ process FREEBAYES {
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    #confirm that ST types are the same
-    if [[ "${meta.seq_type}" != "${meta_2.seq_type}" ]] && [[ "${meta.seq_type}" != "${meta_3.seq_type}" ]]
-    then
-        echo "Yikes, the ST type of your reference and query do not match. This shouldn't happen, please report the bug by opening a github issue."
-        exit 1
-    fi
 
     freebayes --bam ${sorted_bams} --ploidy 1 --fasta-reference ${ref_genome} --vcf ${prefix}_freebayes.vcf
 

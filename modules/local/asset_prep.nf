@@ -10,7 +10,7 @@ process ASSET_PREP {
     tuple val(meta), path(st_snv_samplesheets)
 
     output:
-    tuple val(meta), path("${gunzip}"),                 emit: unzipped_fasta
+    tuple val(meta), path("*.filtered.scaffolds.fa"),   emit: unzipped_fasta
     path("*_geolocation.txt"),                          emit: unzipped_geodata
     tuple val(meta), path("SNVPhyl_*_samplesheet.csv"), emit: st_snv_samplesheets // headers: id,directory
     path("versions.yml"),                               emit: versions
@@ -24,7 +24,6 @@ process ASSET_PREP {
     } else {
         error "Please set params.ica to either \"true\" if running on ICA or \"false\" for all other methods."
     }
-    gunzip = zipped_fasta.toString() - '.gz'
     refname = zipped_fasta.toString() - '.filtered.scaffolds.fa.gz'
     def container = task.container.toString() - "quay.io/jvhagey/phoenix:"
     """
