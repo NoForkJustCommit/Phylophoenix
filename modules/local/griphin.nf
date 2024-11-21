@@ -12,10 +12,10 @@ process GRIPHIN {
     //val(shigapass_detected)
 
     output:
-    path("*_Summary.xlsx"),                            emit: griphin_report
-    path("*_Summary.tsv"),                             emit: griphin_tsv_report
-    path("Directory_samplesheet.csv"), optional: true, emit: griphin_samplesheet
-    path("versions.yml"),                              emit: versions
+    path("*_Summary.xlsx"),            emit: griphin_report
+    path("*_Summary.tsv"),             emit: griphin_tsv_report
+    path("Directory_samplesheet.csv"), emit: griphin_samplesheet
+    path("versions.yml"),              emit: versions
 
     script: // This script is bundled with the pipeline, in cdcgov/griphin/bin/
     // Adding if/else for if running on ICA it is a requirement to state where the script is, however, this causes CLI users to not run the pipeline from any directory.
@@ -26,14 +26,18 @@ process GRIPHIN {
     } else {
         error "Please set params.ica to either \"true\" if running on ICA or \"false\" for all other methods."
     }
-    def samplesheet   = sample_sheet ? "--samplesheet ${sample_sheet}" : ""
     def blind_names   = blind_list ? "--blind_list ${blind_list}" : ""
     def report_prefix = prefix ? "--output ${prefix}" : ""
     def phoenix       = entry ? "" : "--phoenix" // tells griphin in the run was a CDC (i.e. -entry CDC_PHOENIX) one or standard
     // get container info
     def container     = task.container.toString() - "quay.io/jvhagey/phoenix:"
     """
-    ${ica}GRiPHin.py --ar_db ${db} --coverage ${coverage} ${samplesheet} ${blind_names} ${phoenix} ${report_prefix}
+    # rename input samplesheet so it gets passed along.
+    if [[ ${sample_sheet} != "Directory_samplesheet.csv" ]]; then
+        mv ${sample_sheet} Directory_samplesheet.csv
+    fi
+
+    ${ica}GRiPHin.py --ar_db ${db} --coverage ${coverage} --samplesheet Directory_samplesheet.csv ${blind_names} ${phoenix} ${report_prefix}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
