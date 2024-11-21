@@ -10,14 +10,14 @@ process PHYML {
 
     output:
     tuple val(meta), path("phylogeneticTree_pre_${meta.seq_type}.newick"), emit: phylogeneticTree
-    tuple val(meta), path('phylogeneticTreeStats.txt'),   emit: phylogeneticTreeStats
-    path("versions.yml"),                                 emit: versions
+    tuple val(meta), path("${meta.seq_type}_phylogeneticTreeStats.txt"),   emit: phylogeneticTreeStats
+    path("versions.yml"),                                                  emit: versions
 
     script:
     """
 
     phyml -i ${snvAlignment_phy} --datatype nt --model GTR -v 0.0 -s BEST --ts/tv e --nclasses 4 --alpha e --bootstrap -4 --quiet
-    mv ${meta.seq_type}_snvAlignment.phy_phyml_stats.txt phylogeneticTreeStats.txt
+    mv ${meta.seq_type}_snvAlignment.phy_phyml_stats.txt ${meta.seq_type}_phylogeneticTreeStats.txt
     mv ${meta.seq_type}_snvAlignment.phy_phyml_tree.txt phylogeneticTree_pre_${meta.seq_type}.newick
 
     cat <<-END_VERSIONS > versions.yml

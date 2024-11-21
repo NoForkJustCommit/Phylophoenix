@@ -23,8 +23,8 @@ def get_version():
 
 def parseArgs(args=None):
     parser = argparse.ArgumentParser(description="Add latitude and longitude to a dataset.")
-    parser.add_argument("-m", "--input", required=True, help="Input TSV file")
-    parser.add_argument("-o", "--output", required=True, help="Output TSV file")
+    parser.add_argument("-i", "--input", required=True, help="Input TSV file") # ST345_metadata.tsv
+    parser.add_argument("-o", "--output", required=True, help="Output TSV file") # ST345_preclean_metadata.tsv
     parser.add_argument("-l", "--log", default="offline_geocoding_errors.log",required=False, help="Error log file")
     parser.add_argument("-g", "--griphin_tsv", default="GRiPHin_Summary.tsv", required=True, help="Griphin file.")
     parser.add_argument('--version', action='version', version=get_version())# Add an argument to display the version
@@ -275,7 +275,7 @@ def merge_summary_with_metadata(metadata, summary_file, output_file):
     summary_subset = summary[['WGS_ID', organism_column, 'Primary_MLST', 'Secondary_MLST']]
 
     # Merge on 'WGS_ID'
-    merged_data = pd.merge(summary_subset, metadata, left_on='WGS_ID', right_on='sample', how='left')
+    merged_data = pd.merge(summary_subset, metadata, left_on='WGS_ID', right_on='sample', how='inner')
     #we don't need to ID columns so drop one
     merged_data = merged_data.drop(columns=['sample'])
 
@@ -419,7 +419,6 @@ def main(input_file, output_file, log_file, griphin_tsv):
         columns = [col.lower() for col in input_data.columns]
 
         if 'state' in columns and 'country' not in columns:
-            print("got here")
             # Create 'country' column and set all values to 'United States' for valid US states
             input_data['country'] = input_data['state'].apply(lambda x: 'United States' if x.lower() in valid_states else None)
 

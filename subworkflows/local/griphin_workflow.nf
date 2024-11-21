@@ -17,12 +17,12 @@ workflow GRIPHIN_WORKFLOW {
         // Check if input samplesheet or input directory has passed, then check if a control list was passed
         // we have to do all this to make sure paths can be relative
         if (params.input != null) { // if samplesheet is passed
-            if (params.control_list != null){ // if control list is passed allow it to be relative
+            if (params.blind_list != null){ // if control list is passed allow it to be relative
                 // Allow control list to be relative
-                control_path = Channel.fromPath(params.control_list, relative: true)
+                blind_path = Channel.fromPath(params.control_list, relative: true)
                 // Create report
                 GRIPHIN (
-                    input_samplesheet_path, params.ardb, params.prefix, control_path, params.coverage, params.cdc
+                    input_samplesheet_path, params.ardb, params.prefix, blind_path, params.coverage, params.cdc
                 )
                 ch_versions = ch_versions.mix(GRIPHIN.out.versions)
             } else {
@@ -47,10 +47,10 @@ workflow GRIPHIN_WORKFLOW {
 
             if (params.control_list != null){ // if control list is passed allow it to be relative
                 // Allow control list to be relative
-                control_path = Channel.fromPath(params.control_list, relative: true)
+                blind_path = Channel.fromPath(params.control_list, relative: true)
                 // Create report
                 GRIPHIN (
-                    CREATE_SAMPLESHEET.out.samplesheet, params.ardb, params.prefix, control_path, params.coverage, params.cdc
+                    CREATE_SAMPLESHEET.out.samplesheet, params.ardb, params.prefix, blind_path, params.coverage, params.cdc
                 )
                 ch_versions = ch_versions.mix(GRIPHIN.out.versions)
             } else {

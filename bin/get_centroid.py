@@ -50,7 +50,7 @@ def average_mash(input_mash_list, seq_type):
         # If multiple samples share the same mean, choose the first one as the centroid
         message = (
             f"Two samples have the same mean distance: {low_mean_samples[0]} and {low_mean_samples[1]}\n"
-            f"{low_mean_samples[0]} is set as the centroid for All_STs." )
+            f"{low_mean_samples[0]} is set as the centroid for {seq_type}." )
     else:
         # If only one sample has the lowest mean, print the appropriate message
         message = f"{low_mean_samples[0]} is set as the centroid for {seq_type}."

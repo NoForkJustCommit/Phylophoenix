@@ -32,31 +32,39 @@ def append_tsv_to_excel(old_griphin, snvmatrices, result_dict):
     # Define a bold font for seq_type labels
     bold_font = openpyxl.styles.Font(bold=True)
     # Iterate through each TSV file to append
+    count = 0
     for snvmatrix in snvmatrices:
         # Load the TSV file data
         snvmatrix_df = pd.read_csv(snvmatrix, sep='\t')
         # Write text, apply thistle color, and bold font in one line
         sheet.merge_cells("A" + str(start_row) + ":" + xl_rowcol_to_cell(start_row -1 , snvmatrix_df.shape[0]))
-        snvmatrix_cell = sheet.cell(row=start_row, column=1, value="SNVPhyl Analysis: SNV Matrices")
+        if count == 0:
+            snvmatrix_cell = sheet.cell(row=start_row, column=1, value="SNVPhyl Analysis: SNV Matrices")
+            count = 1
         snvmatrix_cell.fill = PatternFill(start_color="D8BFD8", end_color="D8BFD8", fill_type="solid")
         snvmatrix_cell.font = Font(bold=True)
         # Derive seq_type from the filename by removing '_snvMatrix.tsv'
         seq_type = os.path.basename(snvmatrix).replace('_snvMatrix.tsv', '')
         # Write the seq_type label in bold
         sheet.cell(row=start_row + 1, column=1, value=seq_type).font = bold_font
+        # print the reference 
+        # Extract columns that end with '*'
+        ref_with_asterisk = [col for col in snvmatrix_df.columns if col.endswith('*')]
+        ref = "Reference used for " + seq_type + ": " + ref_with_asterisk[0]
+        sheet.cell(row=start_row + 2, column=1, value=ref)
         # Write the % core genome
         core = "% Core Genome Used: " + str(result_dict.get(seq_type))
-        sheet.cell(row=start_row + 2, column=1, value=core)
+        sheet.cell(row=start_row + 3, column=1, value=core)
         # Write the header of the TSV file below the seq_type label
         for col_idx, column_name in enumerate(snvmatrix_df.columns, start=1):
             #sheet.cell(row=start_row + 2, column=col_idx, value=column_name).font = bold_font
-            sheet.cell(row=start_row + 4, column=col_idx, value=column_name)
+            sheet.cell(row=start_row + 5, column=col_idx, value=column_name)
         # Write the TSV data below the header
         for i, row in snvmatrix_df.iterrows():
             for j, value in enumerate(row):
-                sheet.cell(row=start_row + i + 5, column=j + 1, value=value)  # +2 for seq_type and header rows
+                sheet.cell(row=start_row + i + 6, column=j + 1, value=value)  # +2 for seq_type and header rows
         # Update start_row to skip a line after the current TSV data
-        start_row += len(snvmatrix_df) + 6  # +3 to leave one blank row after TSV data
+        start_row += len(snvmatrix_df) + 7  # +7 to leave one blank row after TSV data
     # Save the final output file
     workbook.save("SNVPhyl_GRiPHin_Summary.xlsx")
     print("Excel file with appended TSV data saved as 'SNVPhyl_GRiPHin_Summary.xlsx'.")

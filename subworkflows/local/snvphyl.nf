@@ -77,6 +77,9 @@ workflow SNVPHYL {
         )
         ch_versions = ch_versions.mix(INDEXING.out.versions)
 
+        // Step 2: Join reference and INDEXING.out.ref_indexes by `meta.seq_type`
+        ref_indexed_channel = INDEXING.out.ref_indexes.join(reference, by: [0])
+
         //2. find repeats process takes 1 input channel as a argument
         FIND_REPEATS (
             reference
@@ -128,19 +131,15 @@ workflow SNVPHYL {
             verifying_map_q_ch.map{ meta, sorted_bams, bam_lines_file -> bam_lines_file}.splitText()
         )
         ch_versions = ch_versions.mix(VERIFYING_MAP_Q.out.versions)
-
-        sorted_bams_with_ch = SORT_INDEX_BAMS.out.sorted_bams.combine(INDEXING.out.ref_indexes).filter{ meta_bam, bam, meta_ref_index, ref_fai, ref_sma, ref_smi -> 
-            // Only keep pairs where `seq_type` matches
-            meta_bam.seq_type == meta_ref_index.seq_type}.map { meta_bam, bam, meta_ref_index, ref_fai, ref_sma, ref_smi ->
-                def meta = [:]
-                meta.seq_type = meta_bam.seq_type
-                meta.id = bam.getName().replaceAll("_sorted.bam", "")
-                // Format the output as required
-                [ meta, bam, ref_fai, ref_sma, ref_smi ]}.combine(reference).filter{ meta, bam, ref_fai, ref_sma, ref_smi, meta_ref, reference -> 
-                // Only keep pairs where `seq_type` matches
-                meta.seq_type == meta_ref.seq_type}.map { meta, bam, ref_fai, ref_sma, ref_smi, meta_ref, reference ->
-                // Format the output as required
-                [ meta, bam, ref_fai, ref_sma, ref_smi, reference ]}
+        
+        // Only keep pairs where `seq_type` matches and format the output as required
+        sorted_bams_with_ch = SORT_INDEX_BAMS.out.sorted_bams.map{meta, sorted_bams -> [[seq_type:meta.seq_type], sorted_bams]}.combine(ref_indexed_channel)
+                .filter{ meta_bam, bam, meta_ref, ref_fai, ref_sma, ref_smi, reference -> meta_bam.seq_type == meta_ref.seq_type} 
+                .map{meta_bam, bam, meta_ref, ref_fai, ref_sma, ref_smi, reference -> 
+                        def meta = [:]
+                        meta.seq_type = meta_bam.seq_type
+                        meta.id = bam.getName().replaceAll("_sorted.bam", "")
+                        [ meta, bam, ref_fai, ref_sma, ref_smi, reference ]}
 
         //6. freebays variant calling process takes 3 input channels as arguments. You can do without indexes, but then freebayes makes them so including
         FREEBAYES (

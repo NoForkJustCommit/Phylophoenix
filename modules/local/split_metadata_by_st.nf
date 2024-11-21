@@ -4,8 +4,7 @@ process SPLIT_METADATA_BY_ST {
     container 'quay.io/jvhagey/phoenix:base_v2.1.0'
 
     input:
-    tuple val(meta), path(st_snv_samplesheets)
-    path(metadata)
+    tuple val(meta), path(st_snv_samplesheets), path(metadata)
 
     output:
     tuple val(meta), path("${meta.seq_type}_metadata.tsv"), emit: split_metadata

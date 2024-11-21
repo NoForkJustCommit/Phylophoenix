@@ -41,7 +41,6 @@ def replace_reference_in_meta_file(input_file, output_file, centroid):
     """Replace the word 'reference' with the replacement string in a file."""
     with open(input_file, 'r') as f:
         content = f.read()
-
     # Replace all occurrences of 'reference' with word boundaries
     modified_content = re.sub(rf'\b{re.escape(centroid)}\b', centroid + "*", content)
 
@@ -81,7 +80,8 @@ def main(newick_file, snp_matrix_file, centroid_info_file, output_prefix, metada
     replace_reference_in_file(newick_file, output_prefix + "_phylogeneticTree.newick", replacement_string)
 
     # Replace 'reference' in the metadata
-    replace_reference_in_meta_file(metadata, output_prefix + "_cleaned_metadata.tsv", centroid)
+    if metadata !=None:
+        replace_reference_in_meta_file(metadata, output_prefix + "_cleaned_metadata.tsv", centroid)
 
     # Replace 'reference' in the SNP matrix file
     replace_reference_in_snvfile(snp_matrix_file, output_prefix + "_snvMatrix.tsv", replacement_string)

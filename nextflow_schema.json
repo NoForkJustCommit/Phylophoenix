@@ -18,8 +18,8 @@
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
                     "schema": "assets/schema_input.json",
-                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row. See [usage docs](https://nf-co.re/phylophoenix/usage#samplesheet-input).",
+                    "description": "Path to comma-separated file containing the location of the samples you want to run.",
+                    "help_text": "You will need to create a csv file with the location of your of the samples you want to run before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row. See [usage docs](https://nf-co.re/phylophoenix/usage#samplesheet-input).",
                     "fa_icon": "fas fa-file-csv"
                 },
                 "outdir": {
@@ -37,7 +37,27 @@
                 "by_st": {
                     "type": "boolean",
                     "default": "False",
-                    "description": "The input directory that is a PHoeNIx style structure. A samplesheet will be created from this to run.",
+                    "description": "Passing this parameter means that phylophoenix will split the input dataset up my the their MLST and running isolates together as a group by MLST.",
+                    "fa_icon": "fas fa-keyboard"
+                },
+                "no_all": {
+                    "type": "boolean",
+                    "default": "False",
+                    "description": "By default Phylophoenix runs all samples together and only splits samples by st if --by_st is passed. If you ONLY want to run samples split by ST and not all together then pass --by_st and --no_all.",
+                    "fa_icon": "fas fa-keyboard"
+                },
+                "metadata": {
+                    "type": "string",
+                    "format": "file-path",
+                    "default": "null",
+                    "description": "Used to pass a metadata.tsv file. The file needs a header with the first column called WGS_ID where every sample in the run needs to be listed.",
+                    "fa_icon": "fas fa-keyboard"
+                },
+                "blind_list": {
+                    "type": "string",
+                    "format": "file-path",
+                    "default": "null",
+                    "description": "Used to pass a blind.csv file, which is a CSV file with the format of actual_sample_name,blind_new_name (one sample per line). This is used to 'blind' your output so you can make visualizations without using actual isolate names say for a conference, meeting with folks outside of your organization.",
                     "fa_icon": "fas fa-keyboard"
                 },
                 "email": {
@@ -46,11 +66,6 @@
                     "fa_icon": "fas fa-envelope",
                     "help_text": "Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits. If set in your user config file (`~/.nextflow/config`) then you don't need to specify this on the command line for every run.",
                     "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$"
-                },
-                "multiqc_title": {
-                    "type": "string",
-                    "description": "MultiQC report title. Printed as page header, used for filename if not otherwise specified.",
-                    "fa_icon": "fas fa-file-signature"
                 }
             }
         },
@@ -61,21 +76,18 @@
                     "type": "string",
                     "description": "Reference genome.",
                     "default": 16,
-                    "hidden": false,
                     "help_text": "Reference genome you would like to use rather than getting a centriod."
                 },
                 "window_size": {
                     "type": "integer",
                     "description": "Window size for identifying high-density SNV regions.",
                     "default": 11,
-                    "hidden": false,
                     "help_text": "Window size for identifying high-density SNV regions. Should be an integer e.g. `--window_size 11`"
                 },
                 "density_threshold": {
                     "type": "integer",
                     "description": "SNV threshold for identifying high-density SNV regions.",
                     "default": 2,
-                    "hidden": false,
                     "help_text": "SNV threshold for identifying high-density SNV regions. Should be an integer e.g. `--density_threshold 2`"
                 }
             }
@@ -140,7 +152,6 @@
                     "description": "Maximum number of CPUs that can be requested for any single job.",
                     "default": 16,
                     "fa_icon": "fas fa-microchip",
-                    "hidden": true,
                     "help_text": "Use to set an upper-limit for the CPU requirement for each process. Should be an integer e.g. `--max_cpus 1`"
                 },
                 "max_memory": {
@@ -149,7 +160,6 @@
                     "default": "128.GB",
                     "fa_icon": "fas fa-memory",
                     "pattern": "^\\d+(\\.\\d+)?\\.?\\s*(K|M|G|T)?B$",
-                    "hidden": true,
                     "help_text": "Use to set an upper-limit for the memory requirement for each process. Should be a string in the format integer-unit e.g. `--max_memory '8.GB'`"
                 },
                 "max_time": {
@@ -158,7 +168,6 @@
                     "default": "240.h",
                     "fa_icon": "far fa-clock",
                     "pattern": "^(\\d+\\.?\\s*(s|m|h|day)\\s*)+$",
-                    "hidden": true,
                     "help_text": "Use to set an upper-limit for the time requirement for each process. Should be a string in the format integer-unit e.g. `--max_time '2.h'`"
                 }
             }
@@ -173,14 +182,12 @@
                 "help": {
                     "type": "boolean",
                     "description": "Display help text.",
-                    "fa_icon": "fas fa-question-circle",
-                    "hidden": true
+                    "fa_icon": "fas fa-question-circle"
                 },
                 "version": {
                     "type": "boolean",
                     "description": "Display version and exit.",
-                    "fa_icon": "fas fa-question-circle",
-                    "hidden": true
+                    "fa_icon": "fas fa-question-circle"
                 },
                 "publish_dir_mode": {
                     "type": "string",
@@ -225,23 +232,6 @@
                     "fa_icon": "fas fa-people-group",
                     "help_text": "Incoming hook URL for messaging service. Currently, MS Teams and Slack are supported.",
                     "hidden": true
-                },
-                "multiqc_config": {
-                    "type": "string",
-                    "description": "Custom config file to supply to MultiQC.",
-                    "fa_icon": "fas fa-cog",
-                    "hidden": true
-                },
-                "multiqc_logo": {
-                    "type": "string",
-                    "description": "Custom logo file to supply to MultiQC. File name must also be set in the MultiQC config file",
-                    "fa_icon": "fas fa-image",
-                    "hidden": true
-                },
-                "multiqc_methods_description": {
-                    "type": "string",
-                    "description": "Custom MultiQC yaml file containing HTML including a methods description.",
-                    "fa_icon": "fas fa-cog"
                 },
                 "tracedir": {
                     "type": "string",

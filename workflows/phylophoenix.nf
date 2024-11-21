@@ -66,6 +66,17 @@ include { MULTIQC                     } from '../modules/nf-core/multiqc/main'
 include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoftwareversions/main'
 
 /*
+========================================================================================
+    GROOVY FUNCTIONS
+========================================================================================
+*/
+
+def add_empty_ch(input_ch) {
+    def meta_seq_type = input_ch[0]
+    return [ meta_seq_type, []]
+}
+
+/*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -168,7 +179,9 @@ workflow PHYLOPHOENIX {
             if (params.metadata!=null) {
                 final_output_ch = GET_CENTROID.out.centroid_info.join(SNVPHYL.out.phylogeneticTree, by: [0]).join(SNVPHYL.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA.out.updated_samplesheet, by: [0])
             } else {
-                final_output_ch = GET_CENTROID.out.centroid_info.join(SNVPHYL.out.phylogeneticTree, by: [0]).join(SNVPHYL.out.snvMatrix, by: [0]).combine([])
+                // create empty channel as for CLEAN_AND_CREATE_METADATA that wasn't run and is required for the RENAME_REF_IN_OUTPUT module
+                empty_ch = SNVPHYL.out.snvMatrix.map{ it -> add_empty_ch(it) }
+                final_output_ch = GET_CENTROID.out.centroid_info.join(SNVPHYL.out.phylogeneticTree, by: [0]).join(SNVPHYL.out.snvMatrix, by: [0]).join(empty_ch, by: [0])
             }
 
             // Rename reference to actual sample name
@@ -228,19 +241,29 @@ workflow PHYLOPHOENIX {
             )
             ch_versions = ch_versions.mix(GET_CENTROID_BY_ST.out.versions)
 
+            // make sure that seq_type is the same for the centroid path and st_snv sheet. 
+            asset_prep_ch = GET_CENTROID_BY_ST.out.centroid_path.join(CREATE_META_BY_ST.out.st_snv_samplesheets, by:[0])
+
             // Unzip centroid assembly: SNVPhyl requires it unzipped
             ASSET_PREP_BY_ST (
-                GET_CENTROID_BY_ST.out.centroid_path.splitCsv( header:false, sep:',' ), // Bring in centroid into channel
+                asset_prep_ch.map{meta, centroid_path, st_snv_samplesheets -> [meta, centroid_path]}.splitCsv( header:false, sep:',' ), // Bring in centroid into channel
                 geonames_ch,
-                CREATE_META_BY_ST.out.st_snv_samplesheets
+                asset_prep_ch.map{meta, centroid_path, st_snv_samplesheets -> [meta, st_snv_samplesheets]}
             )
             ch_versions = ch_versions.mix(ASSET_PREP_BY_ST.out.versions)
 
             // Check and correct the metadata file
             if (params.metadata!=null) {
+                //get files in the same tuple for cleaner coding
+                assets_ch = ASSET_PREP_BY_ST.out.unzipped_geodata.map{africa, americas, eu, other, sea, us -> [[africa, americas, eu, other, sea, us]]}
+                //combine files in channels so they aren't comsumed.
+                //we need to have .first() as there might be more coming out of that channel than needed - i.e. not all STs continue since there is a min number of isolates required to continue.
+                metadata_ch = CREATE_META_BY_ST.out.split_metadata.combine(GRIPHIN_WORKFLOW.out.griphin_tsv_report).combine(assets_ch.first())
                 // clean up metadata file, add geolocation information
                 CLEAN_AND_CREATE_METADATA_BY_ST (
-                    CREATE_META_BY_ST.out.split_metadata, GRIPHIN_WORKFLOW.out.griphin_tsv_report, ASSET_PREP.out.unzipped_geodata
+                    metadata_ch.map{meta, metadata, griphin, assets -> [meta, metadata]},
+                    metadata_ch.map{meta, metadata, griphin, assets -> [griphin]},
+                    metadata_ch.map{meta, metadata, griphin, assets -> assets}
                 )
                 ch_versions = ch_versions.mix(CLEAN_AND_CREATE_METADATA_BY_ST.out.versions)
             }
@@ -256,9 +279,12 @@ workflow PHYLOPHOENIX {
             ch_versions = ch_versions.mix(SNVPHYL_BY_ST.out.versions)
 
             if (params.metadata!=null) {
-                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA_BY_ST.out.updated_samplesheet, by: [0])
+                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA_BY_ST.out.updated_metadata, by: [0])
+                final_st_output_by_st_ch.view()
             } else {
-                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).combine([])
+                // create empty channel as for CLEAN_AND_CREATE_METADATA that wasn't run and is required for the RENAME_REF_IN_OUTPUT module
+                empty_ch = SNVPHYL_BY_ST.out.snvMatrix.map{ it -> add_empty_ch(it) }
+                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(empty_ch, by: [0])
             }
 
             // Rename reference to actual sample name
@@ -269,9 +295,15 @@ workflow PHYLOPHOENIX {
         }
 
         if (params.by_st==true) {
-            // collect files to add to griphin summary
-            snvMatrix_ch = RENAME_REF_IN_OUTPUT.out.snvMatrix.collect().combine(RENAME_REF_IN_OUTPUT_BY_ST.out.snvMatrix.collect())
-            vcf2core_ch = SNVPHYL.out.vcf2core.map{ meta, vcf2core -> vcf2core }.collect().combine(SNVPHYL_BY_ST.out.vcf2core.map{ meta, vcf2core -> vcf2core }.collect())
+            if (params.no_all==false) {
+                // collect files to add to griphin summary
+                snvMatrix_ch = RENAME_REF_IN_OUTPUT.out.snvMatrix.collect().combine(RENAME_REF_IN_OUTPUT_BY_ST.out.snvMatrix.collect())
+                vcf2core_ch = SNVPHYL.out.vcf2core.map{ meta, vcf2core -> vcf2core }.collect().combine(SNVPHYL_BY_ST.out.vcf2core.map{ meta, vcf2core -> vcf2core }.collect())
+            } else {
+                // collect files to add to griphin summary
+                snvMatrix_ch = RENAME_REF_IN_OUTPUT_BY_ST.out.snvMatrix.collect()
+                vcf2core_ch = SNVPHYL_BY_ST.out.vcf2core.map{ meta, vcf2core -> vcf2core }.collect()
+            }
         } else {
             // collect files to add to griphin summary
             snvMatrix_ch = RENAME_REF_IN_OUTPUT.out.snvMatrix

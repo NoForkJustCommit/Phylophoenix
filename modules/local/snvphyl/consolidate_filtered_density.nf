@@ -8,8 +8,8 @@ process CONSOLIDATE_FILTERED_DENSITY {
     tuple val(meta), path(filtered_densities), path(invalid_positions)
 
     output:
-    tuple val(meta), path('filtered_density_all.txt'),  emit: filtered_densities
-    tuple val(meta), path('new_invalid_positions.bed'), emit: new_invalid_positions
+    tuple val(meta), path("${meta.seq_type}_filtered_density_all.txt"),  emit: filtered_densities
+    tuple val(meta), path("${meta.seq_type}_new_invalid_positions.bed"), emit: new_invalid_positions
     path("versions.yml"),                               emit: versions
 
     script:
@@ -23,8 +23,8 @@ process CONSOLIDATE_FILTERED_DENSITY {
     }
     def container = task.container.toString() - "quay.io/jvhagey/phoenix:"
     """
-    find ./ -name '*_filtered_density.txt' -exec cat {} + > filtered_density_all.txt
-    ${ica}catWrapper.py new_invalid_positions.bed filtered_density_all.txt ${invalid_positions}
+    find ./ -name '*_filtered_density.txt' -exec cat {} + > ${meta.seq_type}_filtered_density_all.txt
+    ${ica}catWrapper.py ${meta.seq_type}_new_invalid_positions.bed ${meta.seq_type}_filtered_density_all.txt ${invalid_positions}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

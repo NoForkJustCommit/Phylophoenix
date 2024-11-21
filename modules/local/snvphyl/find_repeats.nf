@@ -8,14 +8,14 @@ process FIND_REPEATS {
     tuple val(meta), path(refgenome)
 
     output:
-    tuple val(meta), path("invalid_positions.bed"), emit: repeats_bed_file
-    path("versions.yml"),                           emit: versions
+    tuple val(meta), path("${meta.seq_type}_invalid_positions.bed"), emit: repeats_bed_file
+    path("versions.yml"),                                            emit: versions
 
     script:
     // get container info
     def container = task.container.toString() - "staphb/snvphyl-tools:"
     """
-    find-repeats.pl ${refgenome} --min-length 150 --min-pid 90 > invalid_positions.bed
+    find-repeats.pl ${refgenome} --min-length 150 --min-pid 90 > ${meta.seq_type}_invalid_positions.bed
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

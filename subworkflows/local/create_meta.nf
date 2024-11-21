@@ -35,9 +35,10 @@ workflow CREATE_META {
 
         if (params.metadata!=null) {
             if (split_by_st==true) {
+                split_metadata_ch = st_snv_samplesheets.combine(metadata)
                 //split metadata file by st
                 SPLIT_METADATA_BY_ST (
-                    st_snv_samplesheets, metadata
+                    split_metadata_ch
                 )
                 ch_versions = ch_versions.mix(SPLIT_METADATA_BY_ST.out.versions)
                 split_metadata = SPLIT_METADATA_BY_ST.out.split_metadata
