@@ -269,7 +269,6 @@ workflow PHYLOPHOENIX {
 
             if (params.metadata!=null) {
                 final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA_BY_ST.out.updated_metadata, by: [0])
-                final_st_output_by_st_ch.view()
             } else {
                 // create empty channel as for CLEAN_AND_CREATE_METADATA that wasn't run and is required for the RENAME_REF_IN_OUTPUT module
                 empty_ch = SNVPHYL_BY_ST.out.snvMatrix.map{ it -> add_empty_ch(it) }
