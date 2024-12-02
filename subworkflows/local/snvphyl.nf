@@ -40,6 +40,50 @@ include { INPUT_CHECK                  } from './input_check'
 include { FASTQC                       } from '../../modules/nf-core/fastqc/main'
 
 /*
+========================================================================================
+    GROOVY FUNCTIONS
+========================================================================================
+*/
+
+def add_empty_ch(input_ch) {
+    def meta_seq_type = input_ch[0]
+    return [ meta_seq_type, []]
+}
+
+// Define the filter function
+def filter_and_define_tree(input_meta, snvAlignment, consolidated_bcfs) {
+    def isolate_num = consolidated_bcfs.size() 
+    def meta = input_meta
+    if (isolate_num > 2) {
+        return [ meta, snvAlignment ]
+    } else {
+        print("its me")
+         return [ meta, []]
+    }
+}
+
+def check_if_empty(phylm, empty_ch){
+    print("got here")
+    //when phylm is empty then empty_ch will be [seq_type:All_STs]
+    def tree_ch = phylm.empty ? empty_ch : phylm
+    if (tree_ch.startsWith("seq_type:")){
+        return [empty_ch, []]
+    }
+    return [tree_ch]
+}
+
+// Define the filter function
+def filter_and_define_tree2(input_meta, snvAlignment, consolidated_bcfs, phylogeneticTree) {
+    def isolate_num = consolidated_bcfs.size() 
+    def meta = input_meta
+    if (isolate_num > 2) {
+        return [ meta, phylogeneticTree ]
+    } else {
+         return [ meta, []]
+    }
+}
+
+/*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -254,15 +298,28 @@ workflow SNVPHYL {
         )
         ch_versions = ch_versions.mix(FILTER_STATS.out.versions)
 
-        //15. Using phyml to build tree process takes 1 input channel as an argument
-        PHYML (
-            VCF2SNV_ALIGNMENT.out.snvAlignment
-        )
-        ch_versions = ch_versions.mix(PHYML.out.versions)
+        // Filter STs that don't have > 2 samples as tree building will fail, but we will want the SNV Matrix. If empty and create a placeholder empty channel to keep down stream processes happy.
+        phyml_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0]).filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() > 2}
+            .map{meta, snvAlignment, consolidated_bcfs -> [meta, snvAlignment]}.ifEmpty("I'm empty")
+
+        if (phyml_ch=="I'm empty") {
+            //15. Using phyml to build tree process takes 1 input channel as an argument
+            PHYML (
+                phyml_ch
+            )
+            ch_versions = ch_versions.mix(PHYML.out.versions)
+            phylogeneticTree = PHYML.out.phylogeneticTree
+        } else {
+            phylogeneticTree = VCF2SNV_ALIGNMENT.out.snvAlignment.map{ it -> add_empty_ch(it) }
+        }
+
+        // create empty channel with meta information for cases where the snvmatrix is empty --> just trying to keep the pipeline chugging along to the end.
+        empty_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.map{ it -> add_empty_ch(it) }
+        make_snv_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.join(VCF2SNV_ALIGNMENT.out.emptyMatrix.ifEmpty(empty_ch), by: [0])
 
         //16. Make SNVMatix.tsv
         MAKE_SNV (
-            VCF2SNV_ALIGNMENT.out.snvAlignment
+            make_snv_ch
         )
         ch_versions = ch_versions.mix(MAKE_SNV.out.versions)
 
@@ -270,7 +327,7 @@ workflow SNVPHYL {
         versions         = ch_versions // channel: [ versions.yml ]
         snvMatrix        = MAKE_SNV.out.snvMatrix
         vcf2core         = VCF2SNV_ALIGNMENT.out.vcf2core
-        phylogeneticTree = PHYML.out.phylogeneticTree
+        phylogeneticTree = phylogeneticTree
 
 }
 

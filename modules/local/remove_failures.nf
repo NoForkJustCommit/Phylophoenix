@@ -20,13 +20,13 @@ process REMOVE_FAILURES {
     if (params.ica==false) {
         ica = ""
     } else if (params.ica==true) {
-        ica = "pearl ${workflow.launchDir}/bin/"
+        ica = "python ${workflow.launchDir}/bin/"
     } else {
         error "Please set params.ica to either \"true\" if running on ICA or \"false\" for all other methods."
     }
     def container = task.container.toString() - "quay.io/jvhagey/phoenix:"
     """
-    ${ica}filter_failures.py -s ${summary} -d ${directory_samplesheet}
+    ${ica}remove_failures.py -s ${summary} -d ${directory_samplesheet}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

@@ -62,7 +62,8 @@ include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoft
 
 def add_empty_ch(input_ch) {
     def meta_seq_type = input_ch[0]
-    return [ meta_seq_type, []]
+    output_array = [ meta_seq_type, []]
+    return output_array
 }
 
 /*
@@ -166,6 +167,7 @@ workflow PHYLOPHOENIX {
             ch_versions = ch_versions.mix(SNVPHYL.out.versions)
 
             if (params.metadata!=null) {
+                empty_ch = SNVPHYL.out.snvMatrix.map{ it -> add_empty_ch(it) } // for cases when no tree is made - less than 2 samples with the same ST, but we still want snv matrix
                 final_output_ch = GET_CENTROID.out.centroid_info.join(SNVPHYL.out.phylogeneticTree, by: [0]).join(SNVPHYL.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA.out.updated_metadata, by: [0])
             } else {
                 // create empty channel as for CLEAN_AND_CREATE_METADATA that wasn't run and is required for the RENAME_REF_IN_OUTPUT module
@@ -268,11 +270,12 @@ workflow PHYLOPHOENIX {
             ch_versions = ch_versions.mix(SNVPHYL_BY_ST.out.versions)
 
             if (params.metadata!=null) {
-                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA_BY_ST.out.updated_metadata, by: [0])
+                empty_ch = SNVPHYL_BY_ST.out.snvMatrix.map{ it -> add_empty_ch(it) } // for chases when no tree is made - less than 2 samples with the same ST, but we still want snv matrix
+                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree.ifEmpty(empty_ch), by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(CLEAN_AND_CREATE_METADATA_BY_ST.out.updated_metadata, by: [0])
             } else {
                 // create empty channel as for CLEAN_AND_CREATE_METADATA that wasn't run and is required for the RENAME_REF_IN_OUTPUT module
                 empty_ch = SNVPHYL_BY_ST.out.snvMatrix.map{ it -> add_empty_ch(it) }
-                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree, by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(empty_ch, by: [0])
+                final_st_output_by_st_ch = GET_CENTROID_BY_ST.out.centroid_info.join(SNVPHYL_BY_ST.out.phylogeneticTree.ifEmpty(empty_ch), by: [0]).join(SNVPHYL_BY_ST.out.snvMatrix, by: [0]).join(empty_ch, by: [0])
             }
 
             // Rename reference to actual sample name

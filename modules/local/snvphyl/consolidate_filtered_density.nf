@@ -10,7 +10,7 @@ process CONSOLIDATE_FILTERED_DENSITY {
     output:
     tuple val(meta), path("${meta.seq_type}_filtered_density_all.txt"),  emit: filtered_densities
     tuple val(meta), path("${meta.seq_type}_new_invalid_positions.bed"), emit: new_invalid_positions
-    path("versions.yml"),                               emit: versions
+    path("versions.yml"),                                                emit: versions
 
     script:
     // Adding if/else for if running on ICA it is a requirement to state where the script is, however, this causes CLI users to not run the pipeline from any directory.

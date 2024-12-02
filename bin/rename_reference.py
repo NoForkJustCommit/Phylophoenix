@@ -10,11 +10,11 @@ def get_version():
 
 def parseArgs(args=None):
     parser = argparse.ArgumentParser(description='replace "reference" with the WGS_ID of reference squence.')
-    parser.add_argument("-n", "--newick_file", dest='newick_file',required=True, help="Newick file tree file")
-    parser.add_argument("-s", "--snp_matrix_file", dest='snp_matrix_file',required=True, help="snp matrix file TSV file")
-    parser.add_argument("-m", "--metadata", dest='metadata',required=False, help="metadata file")
-    parser.add_argument("-o", "--output", dest='output',required=False, help="output prefix")
-    parser.add_argument("-c", "--centroid_info", dest='centroid_info_file',required=True, help="centroid_info_file.")
+    parser.add_argument("-n", "--newick_file", dest='newick_file', required=False, help="Newick file tree file")
+    parser.add_argument("-s", "--snp_matrix_file", dest='snp_matrix_file', required=True, help="snp matrix file TSV file")
+    parser.add_argument("-m", "--metadata", dest='metadata', required=False, help="metadata file")
+    parser.add_argument("-o", "--output", dest='output', required=False, help="output prefix")
+    parser.add_argument("-c", "--centroid_info", dest='centroid_info_file', required=True, help="centroid_info_file.")
     parser.add_argument('--version', action='version', version=get_version())# Add an argument to display the version
     return parser.parse_args()
 
@@ -77,7 +77,8 @@ def main(newick_file, snp_matrix_file, centroid_info_file, output_prefix, metada
     replacement_string = f"{centroid}*"
 
     # Replace 'reference' in the Newick file
-    replace_reference_in_file(newick_file, output_prefix + "_phylogeneticTree.newick", replacement_string)
+    if newick_file !=None:
+        replace_reference_in_file(newick_file, output_prefix + "_phylogeneticTree.newick", replacement_string)
 
     # Replace 'reference' in the metadata
     if metadata !=None:

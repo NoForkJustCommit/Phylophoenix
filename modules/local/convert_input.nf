@@ -17,7 +17,7 @@ process CONVERT_INPUT {
     if (params.ica==false) {
         ica = ""
     } else if (params.ica==true) {
-        ica = "pearl ${workflow.launchDir}/bin/"
+        ica = "python ${workflow.launchDir}/bin/"
     } else {
         error "Please set params.ica to either \"true\" if running on ICA or \"false\" for all other methods."
     }

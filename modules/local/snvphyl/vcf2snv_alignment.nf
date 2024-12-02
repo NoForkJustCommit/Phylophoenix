@@ -12,10 +12,11 @@ process VCF2SNV_ALIGNMENT {
     tuple val(meta), path(consolidated_bcf_index)
 
     output:
-    tuple val(meta), path("${meta.seq_type}_snvAlignment.phy"), emit: snvAlignment
-    tuple val(meta), path("${meta.seq_type}_vcf2core.tsv"),     emit: vcf2core
-    tuple val(meta), path("${meta.seq_type}_snvTable.tsv"),     emit: snvTable
-    path("versions.yml"),                                       emit: versions
+    tuple val(meta), path("${meta.seq_type}_snvAlignment.phy"),               emit: snvAlignment
+    tuple val(meta), path("${meta.seq_type}_vcf2core.tsv"),                   emit: vcf2core
+    tuple val(meta), path("${meta.seq_type}_snvTable.tsv"),                   emit: snvTable
+    tuple val(meta), path("${meta.seq_type}_emptyMatrix.tsv"), optional:true, emit: emptyMatrix
+    path("versions.yml"),                                                     emit: versions
 
     script:
     def container = task.container.toString() - "staphb/snvphyl-tools:"
@@ -27,6 +28,24 @@ process VCF2SNV_ALIGNMENT {
         mv snvalign.phy ${meta.seq_type}_snvAlignment.phy
         sed -i "s/'//" ${meta.seq_type}_snvAlignment.phy
         sed -i "s/'//" ${meta.seq_type}_snvAlignment.phy
+    elif grep -q "No valid positions were found. Not creating empty alignment file" .command.out; then
+        # no snv differences found collecting some information to make empty snv matrix
+        echo "No valid positions were found. Creating empty snvMatrix to pass to next process for clean up." > ${meta.seq_type}_snvAlignment.phy
+        files=()
+        files+=("strain")
+        for file in *_consolidated.bcf; do
+            files+=("\$(basename "\$file" _consolidated.bcf)")
+        done
+        files+=("reference")
+        printf "%s\t" "\${files[@]}" | paste -sd "\t" - > ${meta.seq_type}_emptyMatrix.tsv
+        # Write subsequent lines until `files` is exhausted
+        for ((i=1; i < \${#files[@]}; i++)); do
+            # Prepare the line: first element followed by 0s for the remaining elements
+            zeros=\$(printf "0\t%.0s" \$(seq 1 \$((\${#files[@]} - 1))))
+            # Write the current element followed by the zeros to the file
+            echo -e "\${files[\$i]}\t\$zeros" >> ${meta.seq_type}_emptyMatrix.tsv
+        done
+        touch ${meta.seq_type}_snvAlignment.phy
     else
         touch ${meta.seq_type}_snvAlignment.phy
     fi

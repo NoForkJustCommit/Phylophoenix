@@ -27,14 +27,16 @@ def get_st_groups(griphin_report):
     indexes_to_drop = list(novel_df.index) # get indexes that have "Novel_allele" in "Primary_MLST" column
     clean_df = clean_df.drop(index=indexes_to_drop) # drop the rows that have "Novel_allele" in "Primary_MLST" column
     list_of_sts = clean_df["Primary_MLST"].unique() # get unique mlsts from what is left
+    if list_of_sts.size == 0:  # This will be True if list_of_sts is empty
+        raise ValueError("After removing Novel MLSTs there are no STs with enough isolates (min 3) to run Phylophoenix. This set can only be run all together.")
     #get sample names per st type into dictionary
     st_dict = {} #create an empty dictionary
     for seq_type in list_of_sts:
         sample_list = list(clean_df.loc[clean_df["Primary_MLST"] == seq_type, 'WGS_ID']) # get the sample names per ST type
-        if len(sample_list) > 3: # Do not include cases where the there 2 or less >3 sample for a given ST type
+        if len(sample_list) > 1: # Do not include cases where the there are more than 2 samples for a given ST type
             st_dict[seq_type] = sample_list # add st type and its samples to a dictionary
         else:
-            print(f'The following STs did not have enough isolates for analysis: {sample_list}')
+            pass
     return st_dict
 
 def create_sample_sheets(st_dict, samplesheet):

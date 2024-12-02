@@ -33,6 +33,8 @@ def filter_dir_samplesheet(failed_id_list, directory_samplesheet):
     '''remove samples that failed from directory samplesheet so they aren't in the downstream analysis'''
     df = pd.read_csv(directory_samplesheet, header=0, sep=',')
     df = df[~df['sample'].isin(failed_id_list)] #remove failed samples
+    if df.empty:
+        raise ValueError("After removing failures there are no samples left. At least 3 passing isolates are needed for analysis.")
     df.to_csv('Directory_samplesheet.csv', index=False)
 
 def main():

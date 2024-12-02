@@ -5,7 +5,7 @@ process MAKE_SNV {
     container "staphb/snvphyl-tools:1.8.2"
 
     input:
-    tuple val(meta), path(snvAlignment_phy)
+    tuple val(meta), path(snvAlignment_phy), path(emptyMatrix)
 
     output:
     tuple val(meta), path("snvMatrix_pre_${meta.seq_type}.tsv"), emit: snvMatrix
@@ -14,7 +14,12 @@ process MAKE_SNV {
     script:
     def container = task.container.toString() - "staphb/snvphyl-tools:"
     """
-    snv_matrix.pl ${snvAlignment_phy} -o snvMatrix_pre_${meta.seq_type}.tsv
+    # check if the empty matrix was made and rename if so otherwise make a normal snvmatrix
+    if grep -q "No valid positions were found." ${snvAlignment_phy}; then
+        mv ${emptyMatrix} snvMatrix_pre_${meta.seq_type}.tsv
+    else
+        snv_matrix.pl ${snvAlignment_phy} -o snvMatrix_pre_${meta.seq_type}.tsv
+    fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

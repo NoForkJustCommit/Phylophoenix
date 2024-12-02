@@ -122,3 +122,32 @@ def main(old_griphin):
 if __name__ == "__main__":
     args = parseArgs()
     main(args.griphin)
+
+
+
+
+    # Load the original Excel file with openpyxl to preserve formatting and merged cells
+    workbook = openpyxl.load_workbook(old_griphin)
+    sheet = workbook.active
+    # Determine the starting row for appending new data
+    start_row = sheet.max_row + 2  # +2 to leave a blank line after existing data
+    # Define a bold font for seq_type labels
+    bold_font = openpyxl.styles.Font(bold=True)
+
+    # Iterate through each TSV file to append
+    for snvmatrix in snvmatrices:
+        # Derive seq_type from the filename by removing '_snvMatrix.tsv'
+        seq_type = os.path.basename(snvmatrix).replace('_snvMatrix.tsv', '')
+        # Write the seq_type label in bold
+        sheet.cell(row=start_row, column=1, value=seq_type).font = bold_font
+        # Load the TSV file data
+        snvmatrix_df = pd.read_csv(snvmatrix, sep='\t')
+        # Write the TSV data below the seq_type label
+        for i, row in snvmatrix_df.iterrows():
+            for j, value in enumerate(row):
+                sheet.cell(row=start_row + i + 1, column=j + 1, value=value)
+        # Update start_row to skip a line after the current TSV data
+        start_row += len(snvmatrix_df) + 3  # +3 to skip over TSV data and leave one blank row
+    
+    # Save the final output file
+    workbook.save("GRiPHin_Summary.xlsx")

@@ -11,20 +11,16 @@
 
 ## Introduction
 
-🔥🌿🐦🔥 PhyloPHoeNIx is meant to be run in tandem with 🔥🐦🔥 PHoeNIx to aid in outbreak investigations by estimate relatedness between samples. The core of PhyloPHoeNIx is a pipleline originally developed by @apetkau (Aaron Petkau), called SNVPhyl. There is a standalone [Nextflow version of SNVPhyl](https://github.com/DHQP/SNVPhyl_Nextflow) should you need it. For documentation on the pipeline and how it works see the following links.
+🔥🌿🐦🔥 PhyloPHoeNIx is meant to be run in tandem with [🔥🐦🔥 PHoeNIx](https://github.com/CDCgov/phoenix/wiki/) to aid in outbreak investigations by estimate relatedness between samples. Both pipelines were built and are maintained by bioinformatians in the **CDC's [Division of Healthcare Quality Promotion (DHQP)](https://www.cdc.gov/ncezid/divisions-offices/about-dhqp.html?CDC_AAref_Val=https://www.cdc.gov/ncezid/dhqp/index.html)** to standardize surveillance of [antibiotic resistance threats](https://www.cdc.gov/antimicrobial-resistance/media/pdfs/antimicrobial-resistance-threats-update-2022-508.pdf), identification of novel resistance threats and support public health laboratories in their genomic analysis of these organisms. PhyloPHoeNIx is a comprehensive pipeline that performs:  
 
-- [Galaxy Script](https://github.com/phac-nml/snvphyl-galaxy/blob/development/docs/workflows/SNVPhyl/1.0.1/snvphyl-workflow-1.0.1.ga)
-- [Workflow Image](https://snvphyl.readthedocs.io/en/latest/images/snvphyl-overview-galaxy.png)
-- [SNVPhyl Paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5628696/)
-- [SNVPhyl Documenation](https://phac-nml.github.io/irida-documentation/administrator/galaxy/pipelines/phylogenomics/)
+- Automation of DHQP's iterative outbreak analysis (runs analysis on all samples and when --by_st is passed also separates isolates by ST and runs each group through the analysis).  
+- SNV (single-nucleotide variant) matrix creation  
+- Phylogenetic tree building  
+- Reports the % core genome used the SNV determination  
 
-**dhqp/phylophoenix** is a bioinformatics best-practice analysis pipeline for relatedness determination using PHoeNIx output.
+**cdcgov/phylophoenix** is a bioinformatics best-practice analysis pipeline for relatedness determination using PHoeNIx output.
 
-The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It uses Docker/Singularity containers making installation trivial and results highly reproducible. The [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) implementation of this pipeline uses one container per process which makes it much easier to maintain and update software dependencies. Where possible, these processes have been submitted to and installed from [nf-core/modules](https://github.com/nf-core/modules) in order to make them available to all nf-core pipelines, and to everyone within the Nextflow community!
-
-<!-- TODO nf-core: Add full-sized test dataset and amend the paragraph below if applicable -->
-
-On release, automated continuous integration tests run the pipeline on a full-sized dataset on the AWS cloud infrastructure. This ensures that the pipeline runs on AWS, has sensible resource allocation defaults set to run on real-world datasets, and permits the persistent storage of results to benchmark between pipeline releases and other analysis sources.The results obtained from the full-sized test can be viewed on the [nf-core website](https://nf-co.re/phylophoenix/results).
+The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It uses containers making installation trivial and results highly reproducible. The [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) implementation of this pipeline uses one container per process which makes it much easier to maintain and update software dependencies. 
 
 ## Quick Start
 
@@ -35,7 +31,7 @@ On release, automated continuous integration tests run the pipeline on a full-si
 3. Download the pipeline and test it on a minimal dataset with a single command:
 
    ```bash
-   nextflow run dhqp/phylophoenix -profile test,cdcsge,singularity --outdir <OUTDIR>
+   nextflow run cdcgov/phylophoenix -profile test,singularity --outdir <OUTDIR>
    ```
    Note that some form of configuration will be needed so that Nextflow knows how to fetch the required software. This is usually done in the form of a config profile (`YOURPROFILE` in the example command above). You can chain multiple config profiles in a comma-separated string.
 
@@ -47,13 +43,9 @@ On release, automated continuous integration tests run the pipeline on a full-si
 
 ## Pipeline overview
 
-This is the overview of the pipeline:
-
-![Relatedness Pipeline (2)](https://github.com/DHQP/phylophoenix/assets/21023514/254b0020-583e-4f90-b314-99bc92c91a07)
-
-This is the SNVPhyl workflow: 
-
-![Version 3](https://github.com/DHQP/phylophoenix/assets/21023514/a0b46adc-417d-4914-b111-30e60cfb39bf)
+| PhyloPHoeNIx  | SNVPhyl |
+| ------- | ------- |
+| ![Image 1](https://github.com/user-attachments/assets/a423678e-2d79-425a-ad5c-97992da184e9) | ![Image 2](https://github.com/user-attachments/assets/1c27c8dd-66b0-42cb-9e5f-f45f30305a81) |
 
 ## Running PhyloPHoeNIx
 
@@ -67,91 +59,83 @@ sample,directory
 2023BB-00847,/PATH/PHX_output_dir/2023BB-00847
 ```
 
-This method is useful for combing samples from different PHoeNIx directories and the full command woud look like this:
+This method is useful for combing samples from different PHoeNIx directories and the full command would look like this:
 
    ```bash
-   nextflow run dhqp/phylophoenix -profile cdcsge,singularity --outdir <OUTDIR> --input Directory_samplesheet.csv
+   nextflow run cdcgov/phylophoenix -profile singularity --outdir <OUTDIR> --input Directory_samplesheet.csv
    ```
 
-Alternatively, if you want analyze all samples in one PHoeNIx output directory you can pass the path to `--input_dir` and a samplesheet as described above will be created from all samples in this to directory. Using this method the full command would look like this:
+Alternatively, if you want analyze all samples in one PHoeNIx output directory you can pass the path to `--input_dir` and a samplesheet as described above will be created from all samples in this to directory. Using this method the full command would look like this:  
 
    ```bash
-   nextflow run dhqp/phylophoenix -profile cdcsge,singularity --outdir <OUTDIR> --input_dir <PATH TO PHOENIX DIR>
+   nextflow run cdcgov/phylophoenix -profile singularity --outdir <OUTDIR> --indir <PATH TO PHOENIX DIR>
    ```
 
-By default PhyloPHoeNIx creates a SNV matrix and phylogenetic tree from all samples that pass QC in the directory. If you want to also group samples by ST and create additional SNV matrices and phylogenetic trees for each ST type pass the `--by_st` argument. 
+By default PhyloPHoeNIx creates a SNV matrix and phylogenetic tree from all samples that pass QC in the directory. If you want to also group samples by MLST and create additional SNV matrices and phylogenetic trees for each MLST pass the `--by_st` argument.  
 
    ```bash
-   nextflow run dhqp/phylophoenix -profile cdcsge,singularity --outdir <OUTDIR> --input Directory_samplesheet.csv --by_st
+   nextflow run cdcgov/phylophoenix -profile singularity --outdir <OUTDIR> --input Directory_samplesheet.csv --by_st
    ```
-A minimum of 3 samples of the sample ST are required to create a SNV matrix and phylogenetic tree. 
+
+If you want to skip running all samples together and just want to run in `--by_st` mode add the `--no_all` parameter.  
+
+   ```bash
+   nextflow run cdcgov/phylophoenix -profile singularity --outdir <OUTDIR> --input Directory_samplesheet.csv --by_st --no_all
+   ```
+
+**A minimum of 3 samples of the same MLST are required to create a SNV matrix and phylogenetic tree.**
 
 ### Outputs
 
-Here is an example output file tree that has reduced samples for space sake (3 samples are the min for creating a phylogenetic tree).
+Here is an example output file tree that is reduced for space (3 samples are the min for creating a phylogenetic tree).
 
 📦phylophoenix_output  
-┣ 📂All_STs  
-┃ ┣ 📜reference.filtered.scaffolds.fa.fai  
-┃ ┣ 📜reference.filtered.scaffolds.fa.sma  
-┃ ┣ 📜reference.filtered.scaffolds.fa.smi  
-┃ ┣ 📜mappingQuality.txt  
-┃ ┣ 📜consolidation_line.txt  
-┃ ┣ 📜phylogeneticTreeStats.txt  
-┃ ┣ 📜bam_line.txt  
-┃ ┣ 📜filterStats.txt  
-┃ ┣ 📜filtered_density_all.txt  
-┃ ┣ 📜new_invalid_positions.bed  
-┃ ┣ 📜phylogeneticTree.newick   
-┃ ┣ 📜snvAlignment.phy  
-┃ ┣ 📜vcf2core.tsv  
-┃ ┣ 📜snvTable.tsv  
-┃ ┗ 📜snvMatrix.tsv  
-┣ 📂ST8  
-┃ ┣ 📂Sample_1  
-┃ ┃ ┣ 📜Sample_1.bam   
-┃ ┃ ┣ 📜Sample_1_consolidated.bcf  
-┃ ┃ ┣ 📜Sample_1_consolidated.bcf.csi  
-┃ ┃ ┣ 📜Sample_1_consolidated.vcf  
-┃ ┃ ┣ 📜Sample_1_filtered_density.txt     
-┃ ┃ ┣ 📜Sample_1_freebayes_filtered.bcf  
-┃ ┃ ┣ 📜Sample_1_freebayes_filtered.bcf.csi  
-┃ ┃ ┣ 📜Sample_1_freebayes_filtered.vcf  
-┃ ┃ ┣ 📜Sample_1_freebayes_filtered.vcf.gz  
-┃ ┃ ┣ 📜Sample_1_freebayes.vcf  
-┃ ┃ ┣ 📜Sample_1_mpileup.bcf  
-┃ ┃ ┣ 📜Sample_1_mpileup.vcf  
-┃ ┃ ┣ 📜Sample_1_mpileup.vcf.gz  
-┃ ┃ ┗ 📜Sample_1_sorted.bam  
-┃ ┣ 📜reference.filtered.scaffolds.fa.fai  
-┃ ┣ 📜reference.filtered.scaffolds.fa.sma   
-┃ ┣ 📜reference.filtered.scaffolds.fa.smi  
-┃ ┣ 📜mappingQuality.txt  
-┃ ┣ 📜consolidation_line.txt  
-┃ ┣ 📜phylogeneticTreeStats.txt  
-┃ ┣ 📜bam_line.txt  
-┃ ┣ 📜filterStats.txt  
-┃ ┣ 📜filtered_density_all.txt  
-┃ ┣ 📜new_invalid_positions.bed  
-┃ ┣ 📜phylogeneticTree.newick   
-┃ ┣ 📜snvAlignment.phy  
-┃ ┣ 📜vcf2core.tsv  
-┃ ┣ 📜snvTable.tsv  
-┃ ┗ 📜snvMatrix.tsv  
-┣ 📂ST_SampleSheets  
-┃ ┗ 📜SNVPhyl_ST8_samplesheet.csv  
-┗ 📂pipeline_info  
-┣ 📜GRiPHin_Summary.xlsx  
-┣ 📜GRiPHin_Summary.tsv  
-┗ 📜Directory_samplesheet.csv  
+ ┣ 📂\<ST>  
+ ┃ ┣ 📂\<sample_id>  
+ ┃ ┃ ┣ 📜\<sample_id>.bam   
+ ┃ ┃ ┣ 📜\<sample_id>\_sorted.bam      
+ ┃ ┃ ┣ 📜\<sample_id>\_filtered\_density.txt            
+ ┃ ┃ ┣ 📜\<sample_id>\_freebayes\_filtered.vcf.gz     
+ ┃ ┃ ┣ 📜\<sample_id>\_freebayes.vcf            
+ ┃ ┃ ┗ 📜\<sample_id>\_mpileup.vcf.gz  
+ ┃ ┣ 📜\<ST>\_centroid\_info.txt   
+ ┃ ┣ 📜\<ST>\_cleaned\_metadata.tsv   --> upload to Microreact  
+ ┃ ┣ 📜\<ST>\_phylogeneticTree.newick  --> upload to Microreact/iTol or another visualisation program  
+ ┃ ┣ 📜\<ST>\_snvAlignment.phy  
+ ┃ ┣ 📜\<ST>\_snvMatrix.tsv  --> upload to Microreact  
+ ┃ ┣ 📜\<ST>\_vcf2core.tsv  
+ ┃ ┣ 📜filtered_density_all.txt    
+ ┃ ┣ 📜filterStats.txt   
+ ┃ ┣ 📜mappingQuality.txt   
+ ┃ ┣ 📜new_invalid_positions.bed  
+ ┃ ┗ 📜phylogeneticTreeStats.txt  
+ ┣ 📂ST_SampleSheets  
+ ┃ ┗ \<ST>\_samplesheet.csv  
+ ┣ 📂pipeline_info  
+ ┃ ┣ 📜execution_report_<date>.html  
+ ┃ ┣ 📜execution_timeline_<date>.html     
+ ┃ ┣ 📜execution_trace_<date>.txt   
+ ┃ ┣ 📜pipeline_dag_<date>.html   
+ ┃ ┣ 📜samplesheet.valid.csv  
+ ┃ ┗ 📜software_versions.yml    
+ ┣ 📜Directory_samplesheet.csv   
+ ┣ 📜SNVPhyl_GRiPHin_Summary.xlsx  
+ ┗ 📜GRiPHin_Summary.xlsx  
 
 ## Credits
 
-nf-core/phylophoenix was originally written by Jill Hagey.
+The core of PhyloPHoeNIx is a pipleline originally developed by @apetkau (Aaron Petkau), called SNVPhyl. There are standalone [Nextflow](https://github.com/DHQP/SNVPhyl_Nextflow), [Galaxy](https://github.com/phac-nml/snvphyl-galaxy/), and [WDL] versions of SNVPhyl if you prefer to use those. For documentation on SNVPhyl see the following links.
 
-We thank the following people for their extensive assistance in the development of this pipeline:
+- [SNVPhyl Paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5628696/)
+- [SNVPhyl Documenation](https://phac-nml.github.io/irida-documentation/administrator/galaxy/pipelines/phylogenomics/)
 
-<!-- TODO nf-core: If applicable, make list of people who have also contributed -->
+We thank the following people for their extensive assistance and test in the development of this pipeline:
+
+* Nick Vlachos [@nvlachos](https://github.com/nvlachos)
+* Thao Masters [@masters-thao](https://github.com/masters-thao)
+* Alyssa Kent [@Alyssa-Kent](https://github.com/Alyssa-Kent)
+
+Add beta testers here....
 
 ## Contributions and Support
 
