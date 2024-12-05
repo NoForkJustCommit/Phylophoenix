@@ -321,10 +321,6 @@ workflow SNVPHYL {
         )
         ch_versions = ch_versions.mix(PHYML.out.versions)
 
-        /*VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0]).filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() < 2}
-            .map { meta, snvAlignment, consolidated_bcfs -> [meta, []]}.ifEmpty(VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0])
-            .filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() >= 2}.join(PHYML.out.phylogeneticTree, by: [0]).map{ meta, snvAlignment, consolidated_bcfs, tree -> [meta, tree]})*/
-
         // A bunch of nonsense that could have been a simple if/else statement, but nextflow is idiotic and doesn't allow that.
         // TL;DR: If not enough samples to build a tree then return empty channel, else return phyml channel
         // For when there are not enough samples to build a tree, we need to keep the process running and return an empty channel with the correct meta information.
@@ -336,37 +332,6 @@ workflow SNVPHYL {
             .filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() >= 2}.join(PHYML.out.phylogeneticTree, by: [0]).map{ meta, snvAlignment, consolidated_bcfs, tree -> [meta, tree]}
 
         phylogeneticTree = phylogeneticTree1.concat(phylogeneticTree2)
-
-        /*/ A bunch of nonsense that could have been a simple if/else statement, but nextflow is idiotic and doesn't allow that.
-        // TL;DR: If not enough samples to build a tree then return empty channel, else return phyml channel
-        // Similar to phylm above, but we can't use filter as we the meta from counts less than 2 to keep the process running.
-        phylo_check = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0]).map{ meta, snvAlignment, consolidated_bcfs -> 
-                def count = consolidated_bcfs.size()
-                [meta, count] }.map{ meta, count ->
-                    if (count < 2) {
-                        // when there is no samples after filtering (i.e. we dont have >2) then phyml won't be run and we need to return an empty channel to with the correct meta information 
-                        // to keep the RENAME_REF_IN_OUTPUT process running
-                        return "Not enough samples to make tree."
-                    } else {
-                        // when phyml is run then keep its output as phylogeneticTree
-                        // return [meta, []]
-                        return "Enough samples to make tree."
-                    }}
-
-        phylo_check.view()// make subworkflow, maybe a module?
-        if (phylo_check == "Not enough samples to make tree.") {
-            print("noppppeee got here")
-            phylogeneticTree = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0])
-                .filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() < 2}
-                .map{ meta, snvAlignment, consolidated_bcfs -> [meta, []]}
-        } else {
-            print("got here")
-            phylogeneticTree = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0])
-                .filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() >= 2}
-                .join(PHYML.out.phylogeneticTree, by: [0]).map{ meta, snvAlignment, consolidated_bcfs, tree -> [meta, tree]}
-        }*/
-        
-        phylogeneticTree.view()
 
     emit:
         versions         = ch_versions // channel: [ versions.yml ]
