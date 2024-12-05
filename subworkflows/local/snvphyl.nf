@@ -298,30 +298,75 @@ workflow SNVPHYL {
         )
         ch_versions = ch_versions.mix(FILTER_STATS.out.versions)
 
-        // Filter STs that don't have > 2 samples as tree building will fail, but we will want the SNV Matrix. If empty and create a placeholder empty channel to keep down stream processes happy.
-        phyml_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0]).filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() > 2}
-            .map{meta, snvAlignment, consolidated_bcfs -> [meta, snvAlignment]}.ifEmpty("I'm empty")
-
-        if (phyml_ch=="I'm empty") {
-            //15. Using phyml to build tree process takes 1 input channel as an argument
-            PHYML (
-                phyml_ch
-            )
-            ch_versions = ch_versions.mix(PHYML.out.versions)
-            phylogeneticTree = PHYML.out.phylogeneticTree
-        } else {
-            phylogeneticTree = VCF2SNV_ALIGNMENT.out.snvAlignment.map{ it -> add_empty_ch(it) }
-        }
-
         // create empty channel with meta information for cases where the snvmatrix is empty --> just trying to keep the pipeline chugging along to the end.
         empty_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.map{ it -> add_empty_ch(it) }
-        make_snv_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.join(VCF2SNV_ALIGNMENT.out.emptyMatrix.ifEmpty(empty_ch), by: [0])
+        //VCF2SNV_ALIGNMENT.out.snvAlignment.view() //[[seq_type:All_STs], /scicomp/scratch/qpk9/81/cdccc1daf13435b41346c17f36dc50/All_STs_snvAlignment.phy]
+        //VCF2SNV_ALIGNMENT.out.emptyMatrix.view() //[[seq_type:All_STs], /scicomp/scratch/qpk9/81/cdccc1daf13435b41346c17f36dc50/All_STs_emptyMatrix.tsv]
+        make_snv_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.join(VCF2SNV_ALIGNMENT.out.emptyMatrix, by: [0])
+        //make_snv_ch.view() //[[seq_type:All_STs], /scicomp/scratch/qpk9/bd/98a58d0d467133a96fbdf51f79f58b/All_STs_snvAlignment.phy, /scicomp/scratch/qpk9/bd/98a58d0d467133a96fbdf51f79f58b/All_STs_emptyMatrix.tsv]
 
-        //16. Make SNVMatix.tsv
+        //15. Make SNVMatix.tsv
         MAKE_SNV (
             make_snv_ch
         )
         ch_versions = ch_versions.mix(MAKE_SNV.out.versions)
+
+        // Filter STs that don't have > 2 samples as tree building will fail, but we will want the SNV Matrix. If empty and create a placeholder empty channel to keep down stream processes happy.
+        phylm_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0]).filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() >= 2}
+            .map { meta, snvAlignment, consolidated_bcfs -> [meta, snvAlignment]}
+
+        //16. Using phyml to build tree process takes 1 input channel as an argument
+        PHYML (
+            phylm_ch
+        )
+        ch_versions = ch_versions.mix(PHYML.out.versions)
+
+        /*VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0]).filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() < 2}
+            .map { meta, snvAlignment, consolidated_bcfs -> [meta, []]}.ifEmpty(VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0])
+            .filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() >= 2}.join(PHYML.out.phylogeneticTree, by: [0]).map{ meta, snvAlignment, consolidated_bcfs, tree -> [meta, tree]})*/
+
+        // A bunch of nonsense that could have been a simple if/else statement, but nextflow is idiotic and doesn't allow that.
+        // TL;DR: If not enough samples to build a tree then return empty channel, else return phyml channel
+        // For when there are not enough samples to build a tree, we need to keep the process running and return an empty channel with the correct meta information.
+        phylogeneticTree1 = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0]).filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() < 2}
+            .map { meta, snvAlignment, consolidated_bcfs -> [meta, []]}
+    
+        // When there are enough samples to build a tree, we need to return the PHYML.out.phylogeneticTree channel.
+        phylogeneticTree2 = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0])
+            .filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() >= 2}.join(PHYML.out.phylogeneticTree, by: [0]).map{ meta, snvAlignment, consolidated_bcfs, tree -> [meta, tree]}
+
+        phylogeneticTree = phylogeneticTree1.concat(phylogeneticTree2)
+
+        /*/ A bunch of nonsense that could have been a simple if/else statement, but nextflow is idiotic and doesn't allow that.
+        // TL;DR: If not enough samples to build a tree then return empty channel, else return phyml channel
+        // Similar to phylm above, but we can't use filter as we the meta from counts less than 2 to keep the process running.
+        phylo_check = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0]).map{ meta, snvAlignment, consolidated_bcfs -> 
+                def count = consolidated_bcfs.size()
+                [meta, count] }.map{ meta, count ->
+                    if (count < 2) {
+                        // when there is no samples after filtering (i.e. we dont have >2) then phyml won't be run and we need to return an empty channel to with the correct meta information 
+                        // to keep the RENAME_REF_IN_OUTPUT process running
+                        return "Not enough samples to make tree."
+                    } else {
+                        // when phyml is run then keep its output as phylogeneticTree
+                        // return [meta, []]
+                        return "Enough samples to make tree."
+                    }}
+
+        phylo_check.view()// make subworkflow, maybe a module?
+        if (phylo_check == "Not enough samples to make tree.") {
+            print("noppppeee got here")
+            phylogeneticTree = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0])
+                .filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() < 2}
+                .map{ meta, snvAlignment, consolidated_bcfs -> [meta, []]}
+        } else {
+            print("got here")
+            phylogeneticTree = VCF2SNV_ALIGNMENT.out.snvAlignment.join(consolidated_bcfs_ch, by: [0])
+                .filter{ meta, snvAlignment, consolidated_bcfs -> consolidated_bcfs.size() >= 2}
+                .join(PHYML.out.phylogeneticTree, by: [0]).map{ meta, snvAlignment, consolidated_bcfs, tree -> [meta, tree]}
+        }*/
+        
+        phylogeneticTree.view()
 
     emit:
         versions         = ch_versions // channel: [ versions.yml ]
