@@ -45,7 +45,7 @@ The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool
 
 | PhyloPHoeNIx  | SNVPhyl |
 | ------- | ------- |
-| ![Image 1](https://github.com/user-attachments/assets/a423678e-2d79-425a-ad5c-97992da184e9) | ![Image 2](https://github.com/user-attachments/assets/1c27c8dd-66b0-42cb-9e5f-f45f30305a81) |
+| ![Image 1](https://github.com/user-attachments/assets/7aea0957-28c3-4b4a-9555-5a7294200ba5) | ![Image 2](https://github.com/user-attachments/assets/1c27c8dd-66b0-42cb-9e5f-f45f30305a81) |
 
 ## Running PhyloPHoeNIx
 
