@@ -19,7 +19,7 @@ workflow GRIPHIN_WORKFLOW {
         if (params.input != null) { // if samplesheet is passed
             if (params.blind_list != null){ // if control list is passed allow it to be relative
                 // Allow control list to be relative
-                blind_path = Channel.fromPath(params.control_list, relative: true)
+                blind_path = Channel.fromPath(params.blind_list, relative: true)
                 // Create report
                 GRIPHIN (
                     input_samplesheet_path, params.ardb, params.prefix, blind_path, params.coverage, params.cdc
@@ -45,9 +45,9 @@ workflow GRIPHIN_WORKFLOW {
             )
             ch_versions = ch_versions.mix(CREATE_SAMPLESHEET.out.versions)
 
-            if (params.control_list != null){ // if control list is passed allow it to be relative
+            if (params.blind_list != null){ // if control list is passed allow it to be relative
                 // Allow control list to be relative
-                blind_path = Channel.fromPath(params.control_list, relative: true)
+                blind_path = Channel.fromPath(params.blind_list, relative: true)
                 // Create report
                 GRIPHIN (
                     CREATE_SAMPLESHEET.out.samplesheet, params.ardb, params.prefix, blind_path, params.coverage, params.cdc
@@ -69,6 +69,12 @@ workflow GRIPHIN_WORKFLOW {
         )
         ch_versions = ch_versions.mix(REMOVE_FAILURES.out.versions)
 
+        if (params.force==false){
+            final_directory_samplesheet = REMOVE_FAILURES.out.cleaned_dir_samplesheet
+        } else {
+            final_directory_samplesheet = directory_samplesheet
+        }
+
         //ids_to_remove_ch = REMOVE_FAILURES.out.failured_ids.splitCsv( header:false, sep:',' )
         // add in the reads to the channel
         //filtered_reads = reads.map{reads -> [ reads ] }.combine(ids_to_remove_ch).map{reads, ids_to_remove_ch -> filter_reads(reads, ids_to_remove_ch) }.flatten()
@@ -76,6 +82,6 @@ workflow GRIPHIN_WORKFLOW {
     emit:
         griphin_report        = GRIPHIN.out.griphin_report
         griphin_tsv_report    = GRIPHIN.out.griphin_tsv_report  
-        directory_samplesheet = REMOVE_FAILURES.out.cleaned_dir_samplesheet
+        directory_samplesheet = final_directory_samplesheet
         versions              = ch_versions // channel: [ versions.yml ]
 }

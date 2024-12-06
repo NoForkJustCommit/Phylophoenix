@@ -6,8 +6,8 @@ process GET_COMPARISONS {
     path(griphin_samplesheet) // -s
 
     output:
-    path("All_STs_samplesheet.csv"),             emit: samplesheet     // headers: id,seq_type,assembly_1,assembly_2
-    path("SNVPhyl_All_STs_samplesheet_pre.csv"), emit: snv_samplesheet // headers: id,directory
+    path("All_Isolates_samplesheet.csv"),             emit: samplesheet     // headers: id,seq_type,assembly_1,assembly_2
+    path("SNVPhyl_All_Isolates_samplesheet_pre.csv"), emit: snv_samplesheet // headers: id,directory
     path("versions.yml"),                        emit: versions
 
     script: // This script is bundled with the pipeline, in dhqp/griphin/bin/

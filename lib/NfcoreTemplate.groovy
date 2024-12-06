@@ -231,11 +231,15 @@ class NfcoreTemplate {
             if (workflow.stats.ignoredCount == 0) {
                 log.info "-${colors.purple}[$workflow.manifest.name]${colors.green} Pipeline completed successfully${colors.reset}-"
                 log.info "${colors.bicyan} \nDISCLAIMER: The methods used for phylogenetic determination and the data summarized are for public health surveillance or investigational purposes only and must NOT be communicated to the patient, their care provider, or placed in the patient’s medical record. These results should NOT be used for diagnosis, treatment, or assessment of individual patient health or management.\n ${colors.reset}"
-
+                if (params.force==true){
+                    log.info "${colors.bired}You passed --force, so samples that failed QC in PHoeNIx are going to be included in the analysis! This can produce unexpected results, DO NOT USE THIS FLAG UNLESS YOU KNOW WHAT YOU ARE DOING!${colors.reset}"
+                }
             } else {
                 log.info "-${colors.purple}[$workflow.manifest.name]${colors.yellow} Pipeline completed successfully, but with errored process(es) ${colors.reset}-"
                 log.info "${colors.bicyan} \nDISCLAIMER: The methods used for phylogenetic determination and the data summarized are for public health surveillance or investigational purposes only and must NOT be communicated to the patient, their care provider, or placed in the patient’s medical record. These results should NOT be used for diagnosis, treatment, or assessment of individual patient health or management.\n ${colors.reset}"
-
+                if (params.force==true){
+                    log.info "${colors.bired}You passed --force, so samples that failed QC in PHoeNIx are going to be included in the analysis! This can produce unexpected results, DO NOT USE THIS FLAG UNLESS YOU KNOW WHAT YOU ARE DOING!${colors.reset}"
+                }
             }
         } else {
             log.info "-${colors.purple}[$workflow.manifest.name]${colors.red} Pipeline completed with errors${colors.reset}-"

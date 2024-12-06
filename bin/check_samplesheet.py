@@ -48,7 +48,7 @@ class RowChecker:
             second_col (str): The name of the column that contains the second (if any)
                 FASTQ file path (default "fastq_2").
             seq_col (str): The name of the new column that will be inserted and
-                records what the sequence type is for that sample contains (default "All_STs").
+                records what the sequence type is for that sample contains (default "All_Isolates").
 
         """
         super().__init__(**kwargs)

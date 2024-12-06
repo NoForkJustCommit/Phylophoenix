@@ -43,7 +43,7 @@ workflow CREATE_META {
                 ch_versions = ch_versions.mix(SPLIT_METADATA_BY_ST.out.versions)
                 split_metadata = SPLIT_METADATA_BY_ST.out.split_metadata
             } else {
-                // when ALL_STs are running through don't split then just pass it and move along
+                // when All_Isolates are running through don't split then just pass it and move along
                 split_metadata = metadata.map{ it -> add_meta(it) }
             }
         } else {
@@ -122,7 +122,7 @@ def add_meta(metadata) {
     // create meta map
     def meta = [:]
     //meta.id = row.sample
-    meta.seq_type = "All_STs"
+    meta.seq_type = "All_Isolates"
     return [meta, metadata]
 }
 

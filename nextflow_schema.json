@@ -92,6 +92,21 @@
                 }
             }
         },
+        "Advanced Options for Power Users":{
+            "title": "Advanced Options for Power Users",
+            "type": "object",
+            "fa_icon": "fas fa-terminal",
+            "description": "Pipeline Parameters for expert users. Don't change these unless you know what you're doing.",
+            "required": [],
+            "properties": {
+                "force": {
+                    "type": "boolean",
+                    "default": "False",
+                    "description": "By default Phylophoenix will remove any isolates from the analysis if it failed QC in PHoeNIx (FAIL in Minimum_QC_Check column). If you pass --force then Phylophoenix will ignore if samples have failed QC. This can produce unexpected results as some files marked 'FAIL' might have failed for lack of reads or missing files, which can cause downstream issues.",
+                    "fa_icon": "fas fa-keyboard"
+                }
+            }
+        },
         "institutional_config_options": {
             "title": "Institutional config options",
             "type": "object",

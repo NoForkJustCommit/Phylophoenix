@@ -128,8 +128,8 @@ workflow PHYLOPHOENIX {
             dist_ch = MASH_DIST.out.dist.map{ meta, dist -> [ dist ] }.collect() // drop meta and collect all distance files
             centroid_ch = dist_ch.map{ mash_dist -> 
                         def meta = [:]
-                        meta.seq_type = "All_STs"
-                        return tuple (meta , mash_dist)} // add back "All_STs" as the meta value
+                        meta.seq_type = "All_Isolates"
+                        return tuple (meta , mash_dist)} // add back "All_Isolates" as the meta value
             .combine(GRIPHIN_WORKFLOW.out.directory_samplesheet) // Add samplesheet to all mash distance channels
 
             // Take in all mash distance files then use the samplesheet to return the centroid assembly

@@ -100,7 +100,7 @@ Here is an example output file tree that is reduced for space (3 samples are the
  ┃ ┃ ┗ 📜\<sample_id>\_mpileup.vcf.gz  
  ┃ ┣ 📜\<ST>\_centroid\_info.txt   
  ┃ ┣ 📜\<ST>\_cleaned\_metadata.tsv   --> upload to Microreact  
- ┃ ┣ 📜\<ST>\_phylogeneticTree.newick  --> upload to Microreact/iTol or another visualisation program  
+ ┃ ┣ 📜\<ST>\_SNVPhyl.newick  --> upload to Microreact/iTol or another visualisation program  
  ┃ ┣ 📜\<ST>\_snvAlignment.phy  
  ┃ ┣ 📜\<ST>\_snvMatrix.tsv  --> upload to Microreact  
  ┃ ┣ 📜\<ST>\_vcf2core.tsv  
@@ -108,7 +108,7 @@ Here is an example output file tree that is reduced for space (3 samples are the
  ┃ ┣ 📜filterStats.txt   
  ┃ ┣ 📜mappingQuality.txt   
  ┃ ┣ 📜new_invalid_positions.bed  
- ┃ ┗ 📜phylogeneticTreeStats.txt  
+ ┃ ┗ 📜TreeStats_SNVPhyl.txt  
  ┣ 📂ST_SampleSheets  
  ┃ ┗ \<ST>\_samplesheet.csv  
  ┣ 📂pipeline_info  

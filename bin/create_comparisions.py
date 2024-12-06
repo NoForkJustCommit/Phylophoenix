@@ -20,7 +20,7 @@ def parseArgs(args=None):
 def create_sample_sheets(samplesheet):
     """Create a samplesheet with the assemblies for each Seq Type. Also, creates samplesheet to run SNVPhyl for each Seq Type."""
     complete_list = []
-    seq_type = "All_STs"
+    seq_type = "All_Isolates"
     with open("SNVPhyl_" + seq_type +"_samplesheet_pre.csv", "a") as st_snv_samplesheet: # create a new sample sheet for each ST that can be used by snvphyl
         st_snv_samplesheet.write('sample,directory') #write the header
     df = pd.read_csv(samplesheet, sep=',', header=0)

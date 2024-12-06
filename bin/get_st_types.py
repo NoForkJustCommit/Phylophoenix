@@ -65,7 +65,7 @@ def create_sample_sheets(st_dict, samplesheet):
 
 def combine_samplesheets():
     files = glob.glob('ST*_samplesheet.csv')
-    with open("All_STs_samplesheet.csv" , "w") as new_file:
+    with open("All_Isolates_samplesheet.csv" , "w") as new_file:
         for f in files:
             with open(f, 'r') as opened_files:
                 header = next(opened_files)

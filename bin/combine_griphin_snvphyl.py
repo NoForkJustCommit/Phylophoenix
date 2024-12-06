@@ -50,11 +50,13 @@ def append_tsv_to_excel(old_griphin, snvmatrices, result_dict):
         # print the reference 
         # Extract columns that end with '*'
         ref_with_asterisk = [col for col in snvmatrix_df.columns if col.endswith('*')]
-        ref = "Reference used for " + seq_type + ": " + ref_with_asterisk[0]
+        ref = "Reference used for " + seq_type + ":"
         sheet.cell(row=start_row + 2, column=1, value=ref)
+        sheet.cell(row=start_row + 2, column=1, value=ref_with_asterisk[0][:-1])
         # Write the % core genome
-        core = "% Core Genome Used: " + str(result_dict.get(seq_type))
-        sheet.cell(row=start_row + 3, column=1, value=core)
+        #core = "% Core Genome Used: " + str(result_dict.get(seq_type))
+        sheet.cell(row=start_row + 3, column=1, value="SNVPhyl core estimate:")
+        sheet.cell(row=start_row + 3, column=2, value=str(result_dict.get(seq_type))+"%")
         # Write the header of the TSV file below the seq_type label
         for col_idx, column_name in enumerate(snvmatrix_df.columns, start=1):
             #sheet.cell(row=start_row + 2, column=col_idx, value=column_name).font = bold_font
@@ -72,17 +74,17 @@ def append_tsv_to_excel(old_griphin, snvmatrices, result_dict):
 def get_sorted_files(pattern):
     # Retrieve all matching files
     files = glob.glob(pattern)
-    # Separate files containing the All_STs and those that don't
-    All_STs_files = [f for f in files if "All_STs" in f]
-    other_files = [f for f in files if "All_STs" not in f]
+    # Separate files containing the All_Isolates and those that don't
+    All_Isolates_files = [f for f in files if "All_Isolates" in f]
+    other_files = [f for f in files if "All_Isolates" not in f]
     # Define function to extract numbers for sorting
     def extract_number(filename):
         match = re.search(r'\d+', filename)
         return int(match.group()) if match else float('inf')  # float('inf') puts files without numbers at the end
     # Sort remaining files by extracted number, then alphabetically for files without numbers
     other_files.sort(key=lambda f: (extract_number(f), f))
-    # Concatenate lists with All_STs_files first
-    return All_STs_files + other_files
+    # Concatenate lists with All_Isolates_files first
+    return All_Isolates_files + other_files
 
 def get_files():
     # You only need this for glob because glob will throw an index error if not.

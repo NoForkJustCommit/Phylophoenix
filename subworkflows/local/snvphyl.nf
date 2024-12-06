@@ -64,7 +64,7 @@ def filter_and_define_tree(input_meta, snvAlignment, consolidated_bcfs) {
 
 def check_if_empty(phylm, empty_ch){
     print("got here")
-    //when phylm is empty then empty_ch will be [seq_type:All_STs]
+    //when phylm is empty then empty_ch will be [seq_type:All_Isolates]
     def tree_ch = phylm.empty ? empty_ch : phylm
     if (tree_ch.startsWith("seq_type:")){
         return [empty_ch, []]
@@ -300,10 +300,7 @@ workflow SNVPHYL {
 
         // create empty channel with meta information for cases where the snvmatrix is empty --> just trying to keep the pipeline chugging along to the end.
         empty_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.map{ it -> add_empty_ch(it) }
-        //VCF2SNV_ALIGNMENT.out.snvAlignment.view() //[[seq_type:All_STs], /scicomp/scratch/qpk9/81/cdccc1daf13435b41346c17f36dc50/All_STs_snvAlignment.phy]
-        //VCF2SNV_ALIGNMENT.out.emptyMatrix.view() //[[seq_type:All_STs], /scicomp/scratch/qpk9/81/cdccc1daf13435b41346c17f36dc50/All_STs_emptyMatrix.tsv]
         make_snv_ch = VCF2SNV_ALIGNMENT.out.snvAlignment.join(VCF2SNV_ALIGNMENT.out.emptyMatrix, by: [0])
-        //make_snv_ch.view() //[[seq_type:All_STs], /scicomp/scratch/qpk9/bd/98a58d0d467133a96fbdf51f79f58b/All_STs_snvAlignment.phy, /scicomp/scratch/qpk9/bd/98a58d0d467133a96fbdf51f79f58b/All_STs_emptyMatrix.tsv]
 
         //15. Make SNVMatix.tsv
         MAKE_SNV (

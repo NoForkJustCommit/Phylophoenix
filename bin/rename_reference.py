@@ -75,10 +75,11 @@ def main(newick_file, snp_matrix_file, centroid_info_file, output_prefix, metada
         sys.exit(1)
 
     replacement_string = f"{centroid}*"
+    replacement_string_tree = f"{centroid}"
 
     # Replace 'reference' in the Newick file
     if newick_file !=None:
-        replace_reference_in_file(newick_file, output_prefix + "_phylogeneticTree.newick", replacement_string)
+        replace_reference_in_file(newick_file, output_prefix + "_SNVPhyl.newick", replacement_string_tree)
 
     # Replace 'reference' in the metadata
     if metadata !=None:

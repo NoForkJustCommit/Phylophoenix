@@ -60,6 +60,10 @@ workflow PHYLOPHOENIX_WF {
         }
     }
 
+    if (params.force==true){
+        print("You passed --force, so samples that failed QC in PHoeNIx are going to be included in the analysis! This can produce unexpected results, DO NOT USE THIS FLAG UNLESS YOU KNOW WHAT YOU ARE DOING!")
+    }
+
     main:
         PHYLOPHOENIX ( input_samplesheet_path, indir, by_st )
 }

@@ -7,10 +7,10 @@ process RENAME_REF_IN_OUTPUT {
     tuple val(meta), path(centroid_file), path(tree_file), path(snvmatrix), path(metadata_file)
 
     output:
-    path("${meta.seq_type}_snvMatrix.tsv"),                          emit: snvMatrix
-    path("${meta.seq_type}_phylogeneticTree.newick"), optional:true, emit: phylogeneticTree
-    path("${meta.seq_type}_cleaned_metadata.tsv"),    optional:true, emit: cleaned_metadata
-    path("versions.yml"),                                            emit: versions
+    path("${meta.seq_type}_snvMatrix.tsv"),                       emit: snvMatrix
+    path("${meta.seq_type}_SNVPhyl.newick"),       optional:true, emit: phylogeneticTree
+    path("${meta.seq_type}_cleaned_metadata.tsv"), optional:true, emit: cleaned_metadata
+    path("versions.yml"),                                         emit: versions
 
     script:
     // Adding if/else for if running on ICA it is a requirement to state where the script is, however, this causes CLI users to not run the pipeline from any directory.
