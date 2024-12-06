@@ -19,12 +19,6 @@ nextflow.enable.dsl = 2
 WorkflowMain.initialise(workflow, params, log)
 
 
-//if you use --no_all phylophoenix assumes you want to do it by st and will set to true
-if (params.no_all==true) {
-    params.by_st = true
-}
-
-
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     NAMED WORKFLOW FOR PIPELINE
@@ -37,6 +31,12 @@ include { PHYLOPHOENIX } from './workflows/phylophoenix'
 // WORKFLOW: Run main nf-core/phylophoenix analysis pipeline
 //
 workflow PHYLOPHOENIX_WF {
+    //if you use --no_all phylophoenix assumes you want to do it by st and will set to true
+    if (params.no_all==true) {
+        by_st = true
+    } else {
+        by_st = params.by_st //this is the default of false
+    }
     // Check input path parameters to see if they exist
     if (params.input != null ) {  // if a samplesheet is passed
         // allow input to be relative, turn into string and strip off the everything after the last backslash to have remainder of as the full path to the samplesheet. 
@@ -61,7 +61,7 @@ workflow PHYLOPHOENIX_WF {
     }
 
     main:
-        PHYLOPHOENIX ( input_samplesheet_path, indir )
+        PHYLOPHOENIX ( input_samplesheet_path, indir, by_st )
 }
 
 /*

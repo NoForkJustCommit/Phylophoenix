@@ -79,6 +79,7 @@ workflow PHYLOPHOENIX {
     take:
         input_samplesheet_path
         indir
+        by_st
 
     main:
         ch_versions = Channel.empty()
@@ -183,7 +184,7 @@ workflow PHYLOPHOENIX {
        }
 
         // If you pass --by_st then samples will be broken up by st type and SNVPhyl run on each st on its own
-        if (params.by_st==true) {
+        if (by_st==true) {
 
             // Creates samplesheets with sample,seq_type,path_to_assembly
             GET_SEQUENCE_TYPES (
@@ -284,7 +285,7 @@ workflow PHYLOPHOENIX {
             ch_versions = ch_versions.mix(RENAME_REF_IN_OUTPUT_BY_ST.out.versions)
         }
 
-        if (params.by_st==true) {
+        if (by_st==true) {
             if (params.no_all==false) {
                 // collect files to add to griphin summary
                 snvMatrix_ch = RENAME_REF_IN_OUTPUT.out.snvMatrix.collect().combine(RENAME_REF_IN_OUTPUT_BY_ST.out.snvMatrix.collect())
