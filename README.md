@@ -11,12 +11,12 @@
 
 ## Introduction
 
-🔥🌿🐦🔥 PhyloPHoeNIx is meant to be run in tandem with [🔥🐦🔥 PHoeNIx](https://github.com/CDCgov/phoenix/wiki/) to aid in outbreak investigations by estimate relatedness between samples. Both pipelines were built and are maintained by bioinformatians in the **CDC's [Division of Healthcare Quality Promotion (DHQP)](https://www.cdc.gov/ncezid/divisions-offices/about-dhqp.html?CDC_AAref_Val=https://www.cdc.gov/ncezid/dhqp/index.html)** to standardize surveillance of [antibiotic resistance threats](https://www.cdc.gov/antimicrobial-resistance/media/pdfs/antimicrobial-resistance-threats-update-2022-508.pdf), identification of novel resistance threats and support public health laboratories in their genomic analysis of healthcare-associated infection organisms. PhyloPHoeNIx is a comprehensive pipeline that performs:  
+🔥🌿🐦🔥 PhyloPHoeNIx is meant to be run in tandem with [🔥🐦🔥 PHoeNIx](https://github.com/CDCgov/phoenix/wiki/) to aid in outbreak investigations by estimating relatedness between samples. Both pipelines were built and are maintained by bioinformatians in the **CDC's [Division of Healthcare Quality Promotion (DHQP)](https://www.cdc.gov/ncezid/divisions-offices/about-dhqp.html?CDC_AAref_Val=https://www.cdc.gov/ncezid/dhqp/index.html)** to standardize surveillance of [antibiotic resistance threats](https://www.cdc.gov/antimicrobial-resistance/media/pdfs/antimicrobial-resistance-threats-update-2022-508.pdf), identification of novel resistance threats and support public health laboratories in their genomic analysis of healthcare-associated infection organisms. PhyloPHoeNIx is a comprehensive pipeline that performs:  
 
-- Automation of DHQP's iterative outbreak analysis (runs analysis on all samples and when --by_st is passed also separates isolates by ST and runs each group through the analysis).  
+- Automation of DHQP's iterative outbreak analysis (runs analysis on all samples and when --by_st is passed also separates isolates by ST and runs each group through the analysis)  
 - SNV (single-nucleotide variant) matrix creation  
 - Phylogenetic tree building  
-- Reports the % core genome used the SNV determination  
+- Reports the % core genome used in the SNV determination  
 
 **cdcgov/phylophoenix** is a bioinformatics best-practice analysis pipeline for relatedness determination using PHoeNIx output.
 
@@ -59,13 +59,13 @@ sample,directory
 2023BB-00847,/PATH/PHX_output_dir/2023BB-00847
 ```
 
-This method is useful for combing samples from different PHoeNIx directories and the full command would look like this:
+This method is useful for combining samples from different PHoeNIx directories and the full command would look like this:
 
    ```bash
    nextflow run cdcgov/phylophoenix -profile singularity --outdir <OUTDIR> --input Directory_samplesheet.csv
    ```
 
-Alternatively, if you want analyze all samples in one PHoeNIx output directory you can pass the path to `--input_dir` and a samplesheet as described above will be created from all samples in this to directory. Using this method the full command would look like this:  
+Alternatively, if you want to analyze all samples in one PHoeNIx output directory you can pass the path to `--input_dir` and a samplesheet as described above will be created from all samples in this directory. Using this method the full command would look like this:  
 
    ```bash
    nextflow run cdcgov/phylophoenix -profile singularity --outdir <OUTDIR> --indir <PATH TO PHOENIX DIR>
